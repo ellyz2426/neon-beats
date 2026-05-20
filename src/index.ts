@@ -109,6 +109,7 @@ import {
 } from './screens';
 import { TitleVisuals, FPSCounter, getComboColor } from './titlevisuals';
 import { getHypeLevel, checkHypeLevelChange, resetHypeLevel } from './hype';
+import { NeonTubeSystem, HolodeckHorizon } from './neontubes';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -149,6 +150,8 @@ let autoPlayIndex = 0;
 let achievements: Achievement[];
 let titleVisuals: TitleVisuals;
 let fpsCounter: FPSCounter;
+let neonTubes: NeonTubeSystem;
+let holoHorizon: HolodeckHorizon;
 
 // Key mapping
 const LANE_KEYS_4 = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -209,6 +212,10 @@ async function init() {
   // Title visuals & FPS
   titleVisuals = new TitleVisuals();
   fpsCounter = new FPSCounter();
+
+  // Neon decorations
+  neonTubes = new NeonTubeSystem(effectsGroup);
+  holoHorizon = new HolodeckHorizon(effectsGroup);
 
   // Environment
   environment = createEnvironment(state.numLanes);
@@ -630,6 +637,8 @@ function gameLoop() {
     tunnelRings.update(dt, 0);
     waveformLeft.update(dt, 0, now / 1000);
     waveformRight.update(dt, 0, now / 1000);
+    neonTubes.update(now / 1000, 0, 1);
+    holoHorizon.update(now / 1000, 0);
     fpsCounter.update();
     return;
   }
@@ -704,6 +713,8 @@ function gameLoop() {
   tunnelRings.update(dt, beatIntensity);
   waveformLeft.update(dt, beatIntensity, songTime);
   waveformRight.update(dt, beatIntensity, songTime);
+  neonTubes.update(songTime, beatIntensity, state.multiplier);
+  holoHorizon.update(songTime, beatIntensity);
 
   // Lane flashes
   for (let i = laneFlashes.length - 1; i >= 0; i--) {
