@@ -173,6 +173,7 @@ import { VRMenuController, injectVRMenuStyles } from './vrmenu';
 import { HitAnimationSystem } from './hitanims';
 import { VRAimIndicator } from './vrlaneindicator';
 import { LaneFlashSystem, ApproachBeamSystem, HitZoneRing } from './laneflash';
+import { ReactiveStarfield, InfiniteGridFloor, BeatPulseRings } from './starfield';
 import { DynamicMusicEngine } from './music';
 import { CrowdSystem } from './crowd';
 import { MusicalHitSounds } from './musicalhits';
@@ -295,6 +296,9 @@ let vrAimIndicator: VRAimIndicator;
 let laneFlash: LaneFlashSystem;
 let approachBeams: ApproachBeamSystem;
 let hitZoneRing: HitZoneRing;
+let starfield: ReactiveStarfield;
+let infiniteGrid: InfiniteGridFloor;
+let beatPulseRings: BeatPulseRings;
 let dynamicMusic: DynamicMusicEngine;
 let crowdSystem: CrowdSystem;
 let musicalHits: MusicalHitSounds;
@@ -469,6 +473,14 @@ async function init() {
   world.scene.add(approachBeams.getGroup());
   hitZoneRing = new HitZoneRing(state.numLanes, LANE_SPACING, HIT_ZONE_Z);
   world.scene.add(hitZoneRing.getGroup());
+
+  // Starfield & grid
+  starfield = new ReactiveStarfield(400, 25, 50);
+  world.scene.add(starfield.getGroup());
+  infiniteGrid = new InfiniteGridFloor(20, 40, 1);
+  world.scene.add(infiniteGrid.getGroup());
+  beatPulseRings = new BeatPulseRings(6);
+  world.scene.add(beatPulseRings.getGroup());
 
   // VR aim indicator
   vrAimIndicator = new VRAimIndicator();
@@ -1347,6 +1359,8 @@ function gameLoop() {
       const pulseColor = LANE_COLORS[currentBeat % LANE_COLORS.length];
       sceneLight1.color.copy(pulseColor);
       sceneLight1.intensity = 4;
+      // Fire pulse ring on every beat
+      if (beatPulseRings) beatPulseRings.emit(HIT_ZONE_Z, beatIntensity);
     }
 
     // Practice mode metronome
@@ -1519,6 +1533,11 @@ function gameLoop() {
   if (laneFlash) laneFlash.update(dt);
   if (approachBeams) approachBeams.update(dt);
   if (hitZoneRing) hitZoneRing.update(dt, beatIntensity);
+
+  // Starfield & grid updates
+  if (starfield) starfield.update(dt, beatIntensity, state.combo);
+  if (infiniteGrid) infiniteGrid.update(dt, 2 + state.combo * 0.03, beatIntensity);
+  if (beatPulseRings) beatPulseRings.update(dt);
 
   // VR aim indicator
   if (xrInput.isActive()) {
