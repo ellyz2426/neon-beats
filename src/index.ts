@@ -183,6 +183,10 @@ import {
   getDailyChallenge, hasDailyChallengeBeenPlayed,
   saveDailyChallengeScore, type LivesState, type SurvivalState,
 } from './lives';
+import {
+  ReactiveWalls, FloorGrid, SkyParticles,
+  StageManager, MissScreenEffect, PerfectStreakGlow,
+} from './reactive';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -261,6 +265,12 @@ let musicalHits: MusicalHitSounds;
 let scoreCard: ScoreCardGenerator;
 let livesState: LivesState;
 let survivalState: SurvivalState;
+let reactiveWalls: ReactiveWalls;
+let floorGrid: FloorGrid;
+let skyParticles: SkyParticles;
+let stageManager: StageManager;
+let missEffect: MissScreenEffect;
+let perfectStreakGlow: PerfectStreakGlow;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -425,6 +435,20 @@ async function init() {
   // Lives & survival
   livesState = createLivesState(!modifiers.noFail);
   survivalState = createSurvivalState();
+
+  // Reactive environment
+  reactiveWalls = new ReactiveWalls();
+  world.scene.add(reactiveWalls.getGroup());
+
+  floorGrid = new FloorGrid();
+  world.scene.add(floorGrid.getGroup());
+
+  skyParticles = new SkyParticles();
+  world.scene.add(skyParticles.getGroup());
+
+  stageManager = new StageManager();
+  missEffect = new MissScreenEffect();
+  perfectStreakGlow = new PerfectStreakGlow();
 
   setupInput();
 
@@ -917,7 +941,12 @@ function handleLaneHit(lane: number) {
     beatGraph.addHit(quality);
     streakCounter.addHit(quality);
     laneAura.flash(lane);
-    if (quality === 'perfect') multiplierRing.pulse();
+    if (quality === 'perfect') {
+      multiplierRing.pulse();
+      perfectStreakGlow.onPerfect();
+    } else {
+      perfectStreakGlow.onNonPerfect();
+    }
 
     // Haptic feedback
     const hapticIntensity = quality === 'perfect' ? 0.8 : quality === 'great' ? 0.5 : 0.3;
@@ -1093,6 +1122,13 @@ function handleMiss(block: ActiveBlock) {
   const missPos = block.mesh.position;
   hitAnims.spawnMissEffect(missPos.x, missPos.y, missPos.z);
   musicalHits.playMiss();
+
+  // Screen darken on miss
+  missEffect.triggerDarken(0.3);
+  if (state.health <= state.maxHealth * 0.3) {
+    missEffect.triggerCrack();
+  }
+  perfectStreakGlow.onNonPerfect();
 
   // Crowd gasp on miss during high combo
   if (state.combo >= 15) {
@@ -1326,6 +1362,21 @@ function gameLoop() {
     vrAimIndicator.setVisible(false);
   }
   vrAimIndicator.update(dt);
+
+  // Reactive environment
+  reactiveWalls.setBeatIntensity(beatIntensity);
+  reactiveWalls.update(dt, now / 1000);
+  floorGrid.update(dt, beatIntensity, state.combo);
+  skyParticles.update(dt, now / 1000, beatIntensity, state.combo);
+  missEffect.update(dt);
+  perfectStreakGlow.update(dt);
+
+  // Stage transitions based on combo
+  const stageChange = stageManager.update(state.combo, dt);
+  if (stageChange) {
+    reactiveWalls.setColor(stageChange.wallColor);
+    skyParticles.setColor(stageChange.skyColor);
+  }
 
   // Survival mode
   if (survivalState.active) {
