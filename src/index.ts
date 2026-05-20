@@ -1,6 +1,6 @@
 // ============================================================
-// Neon Beats VR — Main Entry Point
-// Complete game loop with all systems integrated
+// Neon Beats VR — Main Entry Point (v0.3)
+// Full game with modifiers, stats, visualizers, tunnel rings
 // ============================================================
 
 import {
@@ -8,13 +8,9 @@ import {
   Color,
   AmbientLight,
   PointLight,
-  DirectionalLight,
   Fog,
   Group,
   Vector3,
-  Mesh,
-  BoxGeometry,
-  MeshBasicMaterial,
 } from '@iwsdk/core';
 import {
   createEnvironment,
@@ -36,7 +32,6 @@ import {
   saveHighScore,
   loadAllHighScores,
   type GameState,
-  type GamePhase,
 } from './game';
 import { getSong, getSongInfo, SONG_LIBRARY } from './songs';
 import {
@@ -44,13 +39,11 @@ import {
   startMusic,
   stopMusic,
   getMusicTime,
-  isMusicPlaying,
   playHitSound,
   playMissSound,
   playComboSound,
   playCountdownBeep,
   playMenuSelect,
-  type BeatEvent,
   type Song,
 } from './audio';
 import {
@@ -62,6 +55,7 @@ import {
   createLaneFlashEffect,
 } from './effects';
 import { SpeedLineManager, BeatPulseManager, StreakFire } from './trails';
+import { WaveformVisualizer, TunnelRingManager } from './visualizer';
 import {
   createHUD,
   updateHUD,
@@ -90,6 +84,20 @@ import {
   getEndlessPhaseColor,
   type EndlessState,
 } from './endless';
+import {
+  createDefaultModifiers,
+  getScoreMultiplier,
+  loadStats,
+  updateStatsAfterSong,
+  type Modifiers,
+  type PlayerStats,
+} from './modifiers';
+import {
+  showModifiersScreen,
+  hideModifiersScreen,
+  showStatsScreen,
+  hideStatsScreen,
+} from './screens';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -108,6 +116,9 @@ let bgPulse: BackgroundPulse;
 let speedLines: SpeedLineManager;
 let beatPulse: BeatPulseManager;
 let streakFire: StreakFire;
+let waveformLeft: WaveformVisualizer;
+let waveformRight: WaveformVisualizer;
+let tunnelRings: TunnelRingManager;
 let laneFlashes: { mesh: any; update: (dt: number) => boolean }[] = [];
 let currentSong: Song | null = null;
 let nextBeatIndex = 0;
@@ -120,17 +131,19 @@ let lastBeatTime = 0;
 let endlessState: EndlessState;
 let sceneLight1: PointLight;
 let sceneLight2: PointLight;
+let modifiers: Modifiers;
+let playerStats: PlayerStats;
+let songStartRealTime = 0;
+let autoPlayIndex = 0;
 
-// ---- Key mapping ----
+// Key mapping
 const LANE_KEYS_4 = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
-const LANE_KEYS_5 = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG'];
 let laneKeys = LANE_KEYS_4;
 const keyState = new Map<string, boolean>();
 
 // ---- Init ----
 
 async function init() {
-  // Detect XR availability
   let xrAvailable = false;
   try {
     if ((navigator as any).xr) {
@@ -161,9 +174,7 @@ async function init() {
 
   // Scene setup
   world.scene.fog = new Fog(0x000008, 8, 35);
-
-  const ambientLight = new AmbientLight(0x222244, 0.4);
-  world.scene.add(ambientLight);
+  world.scene.add(new AmbientLight(0x222244, 0.4));
 
   sceneLight1 = new PointLight(0x00ffff, 2.5, 20);
   sceneLight1.position.set(0, 5, HIT_ZONE_Z);
@@ -173,16 +184,18 @@ async function init() {
   sceneLight2.position.set(0, 3, HIT_ZONE_Z - 12);
   world.scene.add(sceneLight2);
 
-  // Create state
+  // State
   state = createInitialState();
   state.highScores = loadAllHighScores();
   endlessState = createEndlessState();
+  modifiers = createDefaultModifiers();
+  playerStats = loadStats();
 
-  // Create environment
+  // Environment
   environment = createEnvironment(state.numLanes);
   world.scene.add(environment);
 
-  // Block container
+  // Blocks
   blockContainer = new Group();
   blockContainer.name = 'blocks';
   world.scene.add(blockContainer);
@@ -200,22 +213,23 @@ async function init() {
   speedLines = new SpeedLineManager(effectsGroup);
   beatPulse = new BeatPulseManager(effectsGroup);
   streakFire = new StreakFire(effectsGroup);
+  tunnelRings = new TunnelRingManager(effectsGroup);
 
-  // Create HUD
+  // Waveform visualizers
+  waveformLeft = new WaveformVisualizer(effectsGroup, 'left', 24);
+  waveformRight = new WaveformVisualizer(effectsGroup, 'right', 24);
+
+  // HUD
   hud = createHUD(state.numLanes);
   hideHUD(hud);
 
   // Block manager
   blockManager = new BlockManager(blockContainer, state.numLanes);
-  laneKeys = state.numLanes === 4 ? LANE_KEYS_4 : LANE_KEYS_5;
+  laneKeys = LANE_KEYS_4;
 
-  // Input handlers
   setupInput();
-
-  // Start at title screen
   showTitle();
 
-  // Game loop
   lastFrameTime = performance.now();
   world.onUpdate(gameLoop);
 }
@@ -224,20 +238,15 @@ async function init() {
 
 function setupInput() {
   window.addEventListener('keydown', (e) => {
-    if (keyState.get(e.code)) return; // prevent repeat
+    if (keyState.get(e.code)) return;
     keyState.set(e.code, true);
 
     if (state.phase === 'playing' && !paused) {
       const laneIndex = laneKeys.indexOf(e.code);
-      if (laneIndex >= 0) {
+      if (laneIndex >= 0 && !modifiers.autoPlay) {
         handleLaneHit(laneIndex);
       }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePause();
-      }
-      // Escape also pauses
-      if (e.code === 'Escape') {
+      if (e.code === 'Space' || e.code === 'Escape') {
         e.preventDefault();
         togglePause();
       }
@@ -247,27 +256,18 @@ function setupInput() {
         togglePause();
       }
     }
-
-    // Title screen - any key starts
-    if (state.phase === 'title' && (e.code === 'Enter' || e.code === 'Space')) {
-      hideTitleScreen();
-      showSongSelect();
-    }
   });
 
   window.addEventListener('keyup', (e) => {
     keyState.set(e.code, false);
   });
 
-  // Mouse/touch click - hit the closest lane
   container.addEventListener('pointerdown', (e) => {
-    if (state.phase !== 'playing' || paused) return;
-    // Map click position to lane
+    if (state.phase !== 'playing' || paused || modifiers.autoPlay) return;
     const rect = container.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
-    const numLanes = state.numLanes;
-    const lane = Math.floor(x * numLanes);
-    if (lane >= 0 && lane < numLanes) {
+    const lane = Math.floor(x * state.numLanes);
+    if (lane >= 0 && lane < state.numLanes) {
       handleLaneHit(lane);
     }
   });
@@ -280,6 +280,8 @@ function showTitle() {
   hideHUD(hud);
   hideSongSelectScreen();
   hideResultsScreen();
+  hideModifiersScreen();
+  hideStatsScreen();
   showTitleScreen(() => {
     hideTitleScreen();
     showSongSelect();
@@ -296,6 +298,17 @@ function showSongSelect() {
       if (songId === 'endless') {
         state.endless = true;
         state.songId = 'endless';
+      } else if (songId === '_modifiers') {
+        hideSongSelectScreen();
+        showModifiersScreen(modifiers,
+          (newMods) => { modifiers = newMods; hideModifiersScreen(); showSongSelect(); },
+          () => { hideModifiersScreen(); showSongSelect(); }
+        );
+        return;
+      } else if (songId === '_stats') {
+        hideSongSelectScreen();
+        showStatsScreen(playerStats, () => { hideStatsScreen(); showSongSelect(); });
+        return;
       } else {
         state.songId = songId;
       }
@@ -319,20 +332,32 @@ function startCountdown() {
   speedLines.clear();
   beatPulse.clear();
   streakFire.clear();
+  tunnelRings.clear();
   laneFlashes = [];
   nextBeatIndex = 0;
+  autoPlayIndex = 0;
   totalPausedTime = 0;
 
+  // Apply modifiers
+  if (modifiers.noFail) state.maxHealth = 999;
+
   if (state.endless) {
-    endlessState = createEndlessState(120);
+    endlessState = createEndlessState(modifiers.halfSpeed ? 80 : 120);
     const { song } = generateNextPhase(endlessState, state.numLanes);
     currentSong = song;
     state.songDuration = 9999;
-    state.totalNotes = 0;
   } else {
     currentSong = getSong(state.songId, state.numLanes);
     state.songDuration = currentSong.duration;
     state.totalNotes = currentSong.beats.length;
+  }
+
+  // Mirror modifier
+  if (modifiers.mirror && currentSong) {
+    currentSong.beats = currentSong.beats.map(b => ({
+      ...b,
+      lane: state.numLanes - 1 - b.lane,
+    }));
   }
 
   let count = 3;
@@ -362,9 +387,9 @@ function startPlaying() {
   paused = false;
   showHUD(hud);
   speedLines.setActive(true);
-  if (currentSong) {
-    startMusic(currentSong);
-  }
+  tunnelRings.setActive(true);
+  songStartRealTime = performance.now();
+  if (currentSong) startMusic(currentSong);
 }
 
 function finishSong() {
@@ -374,26 +399,38 @@ function finishSong() {
   blockManager.clear();
   speedLines.setActive(false);
   speedLines.clear();
+  tunnelRings.setActive(false);
+  tunnelRings.clear();
+
+  const playTime = (performance.now() - songStartRealTime) / 1000;
+  const cleared = state.health > 0;
+
+  // Update persistent stats
+  playerStats = updateStatsAfterSong(
+    playerStats,
+    state.score,
+    state.perfects,
+    state.greats,
+    state.goods,
+    state.misses,
+    state.maxCombo,
+    playTime,
+    state.songId,
+    cleared
+  );
 
   if (state.endless) {
     const fakeSongInfo = {
-      id: 'endless',
-      name: 'ENDLESS MODE',
-      artist: 'Infinite',
+      id: 'endless', name: 'ENDLESS MODE', artist: 'Infinite',
       bpm: endlessState.bpm,
       duration: Math.floor(endlessState.totalElapsed),
       difficulty: 'expert' as const,
       color: getEndlessPhaseColor(endlessState.phase),
       description: `Survived ${endlessState.phase} phases`,
     };
-
     const isNew = saveHighScore('endless', state.score);
     if (isNew) state.highScores.set('endless', state.score);
-
-    showResultsScreen(
-      state,
-      fakeSongInfo,
-      isNew,
+    showResultsScreen(state, fakeSongInfo, isNew,
       () => { hideResultsScreen(); startCountdown(); },
       () => { hideResultsScreen(); showSongSelect(); }
     );
@@ -401,11 +438,7 @@ function finishSong() {
     const songInfo = getSongInfo(state.songId)!;
     const isNew = saveHighScore(state.songId, state.score);
     if (isNew) state.highScores.set(state.songId, state.score);
-
-    showResultsScreen(
-      state,
-      songInfo,
-      isNew,
+    showResultsScreen(state, songInfo, isNew,
       () => { hideResultsScreen(); startCountdown(); },
       () => { hideResultsScreen(); showSongSelect(); }
     );
@@ -419,8 +452,9 @@ function togglePause() {
     pauseStartTime = performance.now();
     stopMusic();
     speedLines.setActive(false);
+    tunnelRings.setActive(false);
     showPauseOverlay(
-      () => { togglePause(); },
+      () => togglePause(),
       () => {
         paused = false;
         hidePauseOverlay();
@@ -428,6 +462,7 @@ function togglePause() {
         blockManager.clear();
         hideHUD(hud);
         speedLines.setActive(false);
+        tunnelRings.setActive(false);
         showSongSelect();
       }
     );
@@ -435,9 +470,8 @@ function togglePause() {
     totalPausedTime += performance.now() - pauseStartTime;
     hidePauseOverlay();
     speedLines.setActive(true);
-    if (currentSong) {
-      startMusic(currentSong);
-    }
+    tunnelRings.setActive(true);
+    if (currentSong) startMusic(currentSong);
   }
 }
 
@@ -447,46 +481,43 @@ function handleLaneHit(lane: number) {
   if (!currentSong) return;
   const songTime = getMusicTime();
   const result = blockManager.tryHitLane(lane, songTime);
-
   flashLaneKey(hud, lane, !!result);
 
   if (result) {
     const quality = getHitQuality(result.timeDiff);
-    if (quality === 'miss') {
-      handleMiss(result.block);
-      return;
+    if (quality === 'miss') { handleMiss(result.block); return; }
+
+    // Apply score multiplier from modifiers
+    const origScore = state.score;
+    scoreHit(state, quality);
+    const gained = state.score - origScore;
+    const modMult = getScoreMultiplier(modifiers);
+    if (modMult !== 1) {
+      state.score = origScore + Math.round(gained * modMult);
     }
 
-    scoreHit(state, quality);
     playHitSound(quality);
     showTimingFeedback(hud, quality);
 
-    // Visual effects
+    // Visuals
     const pos = result.block.mesh.position.clone();
     const color = LANE_COLORS[lane % LANE_COLORS.length];
-    const particleCount = quality === 'perfect' ? 30 : quality === 'great' ? 18 : 10;
-    particles.emit(pos, color, particleCount, quality === 'perfect' ? 5 : 3);
+    const pCount = quality === 'perfect' ? 30 : quality === 'great' ? 18 : 10;
+    particles.emit(pos, color, pCount, quality === 'perfect' ? 5 : 3);
     hitFlash.flash(pos, color, quality);
     flashHitMarker(environment, lane, quality === 'perfect' ? '#ffffff' : color.getStyle());
 
-    // Lane flash
     const lf = createLaneFlashEffect(lane, state.numLanes, color);
     world.scene.add(lf.mesh);
     laneFlashes.push(lf);
 
-    // Beat pulse ring on perfect
-    if (quality === 'perfect') {
-      beatPulse.pulse(color);
-    }
-
-    // Streak fire on high combos
+    if (quality === 'perfect') beatPulse.pulse(color);
     if (state.combo > 10) {
       const totalWidth = (state.numLanes - 1) * LANE_SPACING;
       const x = -totalWidth / 2 + lane * LANE_SPACING;
       streakFire.emit(x, color);
     }
 
-    // Combo milestones
     if (state.combo > 0 && state.combo % 25 === 0) {
       playComboSound(state.combo);
       comboPopups.show(`${state.combo} COMBO!`, '#ffff00');
@@ -501,13 +532,18 @@ function handleLaneHit(lane: number) {
       bgPulse.pulse(color.getStyle(), 0.3);
     }
 
-    // Remove block
     blockManager.removeBlock(result.block);
   }
 }
 
 function handleMiss(block: ActiveBlock) {
-  scoreMiss(state);
+  if (modifiers.noFail) {
+    state.combo = 0;
+    state.multiplier = 1;
+    state.misses++;
+  } else {
+    scoreMiss(state);
+  }
   playMissSound();
   showTimingFeedback(hud, 'miss');
   screenShake.trigger(0.25);
@@ -529,33 +565,33 @@ function gameLoop() {
     speedLines.update(dt, 0.1);
     beatPulse.update(dt);
     streakFire.update(dt);
+    tunnelRings.update(dt, 0);
+    waveformLeft.update(dt, 0, now / 1000);
+    waveformRight.update(dt, 0, now / 1000);
     return;
   }
 
   const songTime = getMusicTime();
   state.songTime = songTime;
 
-  // Beat intensity
+  // Beat detection
   if (currentSong) {
     const beatDuration = 60 / currentSong.bpm;
     const beatPhase = (songTime % beatDuration) / beatDuration;
     beatIntensity = Math.max(0, 1 - beatPhase * 3);
 
-    // Detect new beat
     const currentBeat = Math.floor(songTime / beatDuration);
     if (currentBeat !== lastBeatTime) {
       lastBeatTime = currentBeat;
-      // Pulse lights on beat
       const pulseColor = LANE_COLORS[currentBeat % LANE_COLORS.length];
       sceneLight1.color.copy(pulseColor);
       sceneLight1.intensity = 4;
     }
   }
 
-  // Decay light intensity
   sceneLight1.intensity = Math.max(2.5, sceneLight1.intensity * 0.95);
 
-  // Spawn new blocks
+  // Spawn blocks
   if (currentSong) {
     const spawnAhead = 2.5;
     while (nextBeatIndex < currentSong.beats.length) {
@@ -565,33 +601,34 @@ function gameLoop() {
       nextBeatIndex++;
     }
 
-    // Endless mode: generate next phase when approaching the end
+    // Endless: generate next phase
     if (state.endless && nextBeatIndex >= currentSong.beats.length - 5) {
       const { song } = generateNextPhase(endlessState, state.numLanes);
-      // Append new beats to current song
-      const newBeats = song.beats;
-      currentSong.beats.push(...newBeats);
-      // Show phase notification
-      comboPopups.show(
-        `PHASE ${endlessState.phase}`,
-        getEndlessPhaseColor(endlessState.phase),
-        50, 25
-      );
-      comboPopups.show(
-        getEndlessDifficultyLabel(endlessState),
-        '#ffffff',
-        50, 32
-      );
+      currentSong.beats.push(...song.beats);
+      comboPopups.show(`PHASE ${endlessState.phase}`, getEndlessPhaseColor(endlessState.phase), 50, 25);
+      comboPopups.show(getEndlessDifficultyLabel(endlessState), '#ffffff', 50, 32);
     }
   }
 
-  // Update blocks
-  const missed = blockManager.update(songTime, dt);
-  for (const block of missed) {
-    handleMiss(block);
+  // Auto-play
+  if (modifiers.autoPlay && currentSong) {
+    while (autoPlayIndex < currentSong.beats.length) {
+      const beat = currentSong.beats[autoPlayIndex];
+      if (beat.time > songTime + 0.02) break;
+      if (beat.time >= songTime - 0.02) {
+        handleLaneHit(beat.lane);
+      }
+      autoPlayIndex++;
+    }
   }
 
-  // Update all visual systems
+  // Update blocks (apply hidden/fadeIn modifiers)
+  const missed = blockManager.update(songTime, dt);
+  for (const block of missed) {
+    if (!modifiers.autoPlay) handleMiss(block);
+  }
+
+  // Update visuals
   updateEnvironment(environment, now / 1000, beatIntensity);
   updateHitMarkerFlash(environment, state.numLanes);
   particles.update(dt);
@@ -601,8 +638,11 @@ function gameLoop() {
   speedLines.update(dt, beatIntensity + (state.combo > 10 ? 0.3 : 0));
   beatPulse.update(dt);
   streakFire.update(dt);
+  tunnelRings.update(dt, beatIntensity);
+  waveformLeft.update(dt, beatIntensity, songTime);
+  waveformRight.update(dt, beatIntensity, songTime);
 
-  // Update lane flashes
+  // Lane flashes
   for (let i = laneFlashes.length - 1; i >= 0; i--) {
     if (!laneFlashes[i].update(dt)) {
       world.scene.remove(laneFlashes[i].mesh);
@@ -610,7 +650,7 @@ function gameLoop() {
     }
   }
 
-  // Apply screen shake
+  // Screen shake
   if (!world.isInXR) {
     environment.position.x = screenShake.offset.x;
     environment.position.y = screenShake.offset.y;
@@ -618,31 +658,16 @@ function gameLoop() {
     blockContainer.position.y = screenShake.offset.y;
   }
 
-  // Update HUD
+  // HUD
   const songName = state.endless ?
     `∞ Phase ${endlessState.phase} • ${endlessState.bpm} BPM` :
     getSongInfo(state.songId)?.name || '';
-  updateHUD(
-    hud,
-    state.score,
-    state.combo,
-    state.multiplier,
-    state.health,
-    state.maxHealth,
-    state.endless ? 1 : (currentSong ? songTime / currentSong.duration : 0),
-    songName
-  );
+  updateHUD(hud, state.score, state.combo, state.multiplier, state.health,
+    state.maxHealth, state.endless ? 1 : (currentSong ? songTime / currentSong.duration : 0), songName);
 
-  // Check game over
-  if (state.health <= 0) {
-    finishSong();
-    return;
-  }
-
-  // Check song complete (non-endless)
-  if (!state.endless && currentSong && songTime >= currentSong.duration + 1) {
-    finishSong();
-  }
+  // Game over / complete
+  if (state.health <= 0 && !modifiers.noFail) { finishSong(); return; }
+  if (!state.endless && currentSong && songTime >= currentSong.duration + 1) finishSong();
 }
 
 // ---- Start ----

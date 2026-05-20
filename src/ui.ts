@@ -142,8 +142,23 @@ export function showSongSelectScreen(
 
   html += `
       </div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
+        <button class="songItem" data-id="_modifiers" style="
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.3);
+          color: #00ffff; padding: 8px 20px; font-size: 13px;
+          font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
+          transition: all 0.2s;
+        ">⚙ MODIFIERS</button>
+        <button class="songItem" data-id="_stats" style="
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,255,0.3);
+          color: #ff00ff; padding: 8px 20px; font-size: 13px;
+          font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
+          transition: all 0.2s;
+        ">📊 STATS</button>
+      </div>
       <button id="backBtn" style="
-        margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.3);
+        margin-top: 12px; background: transparent; border: 1px solid rgba(255,255,255,0.3);
         color: rgba(255,255,255,0.5); padding: 8px 30px; font-size: 14px;
         font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
         transition: all 0.2s;
