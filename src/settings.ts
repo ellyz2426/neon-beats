@@ -265,6 +265,10 @@ export function showSettingsScreen(
           ${toggle('reducedMotion', 'Reduced Motion', current.reducedMotion, '#00ff88')}
           ${toggle('largeText', 'Large Text', current.largeText, '#00ff88')}
           ${toggle('hitGuides', 'Show Hit Guides', current.showHitGuides, '#00ff88')}
+          ${slider('blockScale', 'Block Size', (current.blockScale - 0.5) / 1.5, `×${current.blockScale.toFixed(1)}`)}
+          ${toggle('extTimingWindow', 'Extended Timing Window', current.extendedTimingWindow, '#00ff88')}
+          ${toggle('autoHold', 'Auto-Complete Holds', current.autoHold, '#00ff88')}
+          ${toggle('highContrast', 'High Contrast Blocks', current.highContrastBlocks, '#00ff88')}
         </div>
 
         <!-- Buttons -->
@@ -302,6 +306,7 @@ export function showSettingsScreen(
           case 'particleDensity': current.particleDensity = val; break;
           case 'noteSpeed': current.noteSpeed = 0.5 + val * 1.5; break;
           case 'audioOffset': current.audioOffset = Math.round(val * 200 - 100); break;
+          case 'blockScale': current.blockScale = 0.5 + val * 1.5; break;
         }
         render();
       });
@@ -318,6 +323,9 @@ export function showSettingsScreen(
           case 'reducedMotion': current.reducedMotion = !current.reducedMotion; break;
           case 'largeText': current.largeText = !current.largeText; break;
           case 'hitGuides': current.showHitGuides = !current.showHitGuides; break;
+          case 'extTimingWindow': current.extendedTimingWindow = !current.extendedTimingWindow; break;
+          case 'autoHold': current.autoHold = !current.autoHold; break;
+          case 'highContrast': current.highContrastBlocks = !current.highContrastBlocks; break;
         }
         playMenuSelect();
         render();

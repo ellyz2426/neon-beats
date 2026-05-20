@@ -4,7 +4,7 @@
 
 🌐 **[Play Now](https://ellyz2426.github.io/neon-beats/)** | Built with [IWSDK](https://github.com/nickslevine/iwsdk)
 
-![Neon Beats VR](https://img.shields.io/badge/Songs-33-00ffff?style=flat-square) ![Modes](https://img.shields.io/badge/Modes-7-ff00ff?style=flat-square) ![Status](https://img.shields.io/badge/Status-Playable-00ff88?style=flat-square)
+![Neon Beats VR](https://img.shields.io/badge/Songs-33-00ffff?style=flat-square) ![Modes](https://img.shields.io/badge/Modes-8-ff00ff?style=flat-square) ![Status](https://img.shields.io/badge/Status-Playable-00ff88?style=flat-square) ![Files](https://img.shields.io/badge/Files-71-ffcc00?style=flat-square) ![Lines](https://img.shields.io/badge/Lines-19k+-ff6600?style=flat-square)
 
 ---
 
