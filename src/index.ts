@@ -172,6 +172,7 @@ import { VRSaberManager } from './sabers';
 import { VRMenuController, injectVRMenuStyles } from './vrmenu';
 import { HitAnimationSystem } from './hitanims';
 import { VRAimIndicator } from './vrlaneindicator';
+import { LaneFlashSystem, ApproachBeamSystem, HitZoneRing } from './laneflash';
 import { DynamicMusicEngine } from './music';
 import { CrowdSystem } from './crowd';
 import { MusicalHitSounds } from './musicalhits';
@@ -291,6 +292,9 @@ let wasInXR = false;
 // New systems
 let hitAnims: HitAnimationSystem;
 let vrAimIndicator: VRAimIndicator;
+let laneFlash: LaneFlashSystem;
+let approachBeams: ApproachBeamSystem;
+let hitZoneRing: HitZoneRing;
 let dynamicMusic: DynamicMusicEngine;
 let crowdSystem: CrowdSystem;
 let musicalHits: MusicalHitSounds;
@@ -457,6 +461,14 @@ async function init() {
   // Hit animations
   hitAnims = new HitAnimationSystem();
   world.scene.add(hitAnims.getGroup());
+
+  // Lane flash & approach beam systems
+  laneFlash = new LaneFlashSystem(state.numLanes, LANE_SPACING, HIT_ZONE_Z);
+  world.scene.add(laneFlash.getGroup());
+  approachBeams = new ApproachBeamSystem(state.numLanes, LANE_SPACING, HIT_ZONE_Z);
+  world.scene.add(approachBeams.getGroup());
+  hitZoneRing = new HitZoneRing(state.numLanes, LANE_SPACING, HIT_ZONE_Z);
+  world.scene.add(hitZoneRing.getGroup());
 
   // VR aim indicator
   vrAimIndicator = new VRAimIndicator();
@@ -1031,6 +1043,15 @@ function handleLaneHit(lane: number) {
       hitAnims.spawnShatter(blockPos.x, blockPos.y, blockPos.z, laneColor);
     }
 
+    // Lane flash on hit
+    if (laneFlash) {
+      laneFlash.flash(lane, quality, laneColor);
+    }
+    // Hit zone ring pulse
+    if (hitZoneRing) {
+      hitZoneRing.pulse(quality === 'perfect' ? 1.0 : quality === 'great' ? 0.7 : 0.4);
+    }
+
     // Survival mode tracking
     if (survivalState.active) {
       onSurvivalBlockHit(survivalState);
@@ -1495,6 +1516,11 @@ function gameLoop() {
   dynamicMusic.update(dt);
   crowdSystem.updatePerformance(state.combo, state.health, state.maxHealth);
   crowdSystem.update(dt);
+
+  // Lane flash & approach beam systems
+  if (laneFlash) laneFlash.update(dt);
+  if (approachBeams) approachBeams.update(dt);
+  if (hitZoneRing) hitZoneRing.update(dt, beatIntensity);
 
   // VR aim indicator
   if (xrInput.isActive()) {

@@ -11,6 +11,9 @@ const PROGRESSIONS = {
   driving:  [[0, 4, 7], [5, 9, 0], [7, 11, 2], [5, 9, 0]],    // I - IV - V - IV
   epic:     [[0, 3, 7], [8, 0, 3], [5, 8, 0], [7, 10, 2]],    // i - bVI - iv - v
   tension:  [[0, 3, 7], [1, 4, 8], [3, 7, 10], [5, 8, 0]],    // i - bII - bIII - iv
+  dream:    [[0, 4, 7], [9, 0, 4], [5, 9, 0], [7, 11, 2]],    // I - vi - IV - V
+  minor4:   [[0, 3, 7], [5, 8, 0], [3, 7, 10], [7, 10, 2]],   // i - iv - bIII - v
+  power:    [[0, 7, 0], [5, 0, 5], [3, 10, 3], [7, 2, 7]],    // power chords
 };
 
 interface PhraseConfig {
@@ -43,11 +46,34 @@ const STRUCTURES: Record<string, PhraseConfig[]> = {
     { bars: 8, density: 1.0, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.85, dropFeel: true },
     { bars: 4, density: 0.7, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: false, beatDensity: 0.5, dropFeel: false },
   ],
+  ambient: [
+    { bars: 8, density: 0.2, hasKick: false, hasSnare: false, hasHihat: false, hasBass: false, hasMelody: false, hasArp: true, beatDensity: 0.12, dropFeel: false },
+    { bars: 8, density: 0.3, hasKick: false, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: false, hasArp: true, beatDensity: 0.2, dropFeel: false },
+    { bars: 8, density: 0.5, hasKick: true, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.35, dropFeel: false },
+    { bars: 4, density: 0.3, hasKick: false, hasSnare: false, hasHihat: false, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.15, dropFeel: false },
+    { bars: 8, density: 0.6, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: false, beatDensity: 0.45, dropFeel: true },
+    { bars: 4, density: 0.2, hasKick: false, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.1, dropFeel: false },
+  ],
+  relentless: [
+    { bars: 2, density: 0.7, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: false, hasArp: true, beatDensity: 0.6, dropFeel: true },
+    { bars: 8, density: 1.0, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.9, dropFeel: true },
+    { bars: 2, density: 0.5, hasKick: true, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: true, hasArp: false, beatDensity: 0.4, dropFeel: false },
+    { bars: 8, density: 1.0, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.95, dropFeel: true },
+  ],
+  groove: [
+    { bars: 4, density: 0.4, hasKick: true, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: false, hasArp: false, beatDensity: 0.25, dropFeel: false },
+    { bars: 8, density: 0.6, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: false, beatDensity: 0.5, dropFeel: false },
+    { bars: 4, density: 0.7, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.6, dropFeel: true },
+    { bars: 4, density: 0.4, hasKick: true, hasSnare: false, hasHihat: true, hasBass: true, hasMelody: true, hasArp: false, beatDensity: 0.3, dropFeel: false },
+    { bars: 8, density: 0.8, hasKick: true, hasSnare: true, hasHihat: true, hasBass: true, hasMelody: true, hasArp: true, beatDensity: 0.65, dropFeel: true },
+  ],
 };
 
 function getStructure(difficulty: string): PhraseConfig[] {
-  if (difficulty === 'easy' || difficulty === 'medium') return STRUCTURES.buildup;
-  return STRUCTURES.intense;
+  if (difficulty === 'easy') return STRUCTURES.ambient;
+  if (difficulty === 'medium') return STRUCTURES.groove;
+  if (difficulty === 'hard') return STRUCTURES.buildup;
+  return STRUCTURES.relentless;
 }
 
 // ---- Improved Beat Generation ----
@@ -207,7 +233,11 @@ export function generateStructuredBass(
   const totalBeats = Math.ceil(duration / beatDur);
   const bass: number[] = new Array(totalBeats).fill(0);
 
-  const progression = difficulty === 'hard' || difficulty === 'expert' ? PROGRESSIONS.dark : PROGRESSIONS.driving;
+  const progNames = Object.keys(PROGRESSIONS) as (keyof typeof PROGRESSIONS)[];
+  const progression = difficulty === 'expert' ? PROGRESSIONS.tension :
+    difficulty === 'hard' ? PROGRESSIONS.dark :
+    difficulty === 'medium' ? PROGRESSIONS.driving :
+    PROGRESSIONS.dream;
 
   let beat = 0;
   let phraseIndex = 0;
@@ -244,6 +274,9 @@ export function generateStructuredBass(
 
 const PENTATONIC_MINOR = [0, 3, 5, 7, 10];
 const BLUES_SCALE = [0, 3, 5, 6, 7, 10];
+const PENTATONIC_MAJOR = [0, 2, 4, 7, 9];
+const DORIAN_SCALE = [0, 2, 3, 5, 7, 9, 10];
+const HARMONIC_MINOR = [0, 2, 3, 5, 7, 8, 11];
 
 export function generateStructuredMelody(
   bpm: number,
@@ -255,7 +288,10 @@ export function generateStructuredMelody(
   const stepDur = 60 / bpm / 2; // 8th notes
   const totalSteps = Math.ceil(duration / stepDur);
   const melody: number[] = new Array(totalSteps).fill(0);
-  const scale = difficulty === 'hard' || difficulty === 'expert' ? BLUES_SCALE : PENTATONIC_MINOR;
+  const scale = difficulty === 'expert' ? HARMONIC_MINOR :
+    difficulty === 'hard' ? BLUES_SCALE :
+    difficulty === 'medium' ? DORIAN_SCALE :
+    PENTATONIC_MAJOR;
 
   let step = 0;
   let phraseIndex = 0;
