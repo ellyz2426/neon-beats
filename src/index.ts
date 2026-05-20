@@ -212,6 +212,13 @@ import {
 } from './multiplayer';
 import { ComfortVignette, loadVRComfort, saveVRComfort } from './vrcomfort';
 import { LaneBurstSystem, AnimatedComboCounter, ScorePopupSystem } from './combofx';
+import { SpectrumAnalyzer, BeatRingPulser, BassFloorGlow } from './audiovis';
+import { NotificationSystem } from './notifications';
+import {
+  loadProgression, addXP, calculateSongXP,
+  createLevelBar, updateLevelBar, showLevelBar, hideLevelBar,
+  type PlayerLevel,
+} from './progression';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -310,6 +317,11 @@ let comfortVignette: ComfortVignette;
 let laneBursts: LaneBurstSystem;
 let animCombo: AnimatedComboCounter;
 let scorePopups: ScorePopupSystem;
+let spectrumAnalyzer: SpectrumAnalyzer;
+let beatRingPulser: BeatRingPulser;
+let bassFloorGlow: BassFloorGlow;
+let notifications: NotificationSystem;
+let playerProgress: PlayerLevel;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -505,6 +517,19 @@ async function init() {
   world.scene.add(laneBursts.getGroup());
   animCombo = new AnimatedComboCounter();
   scorePopups = new ScorePopupSystem();
+
+  spectrumAnalyzer = new SpectrumAnalyzer();
+  world.scene.add(spectrumAnalyzer.getGroup());
+
+  beatRingPulser = new BeatRingPulser();
+  world.scene.add(beatRingPulser.getGroup());
+
+  bassFloorGlow = new BassFloorGlow();
+  world.scene.add(bassFloorGlow.getMesh());
+
+  notifications = new NotificationSystem();
+  playerProgress = loadProgression();
+  createLevelBar();
 
   createBossHUD();
   setupErrorBoundary();
@@ -840,6 +865,20 @@ function finishSong() {
     }
   }
 
+  // Award XP
+  const songXP = calculateSongXP(
+    state.score, accuracyForStats, state.maxCombo,
+    difficulty, state.misses === 0
+  );
+  const newUnlocks = addXP(playerProgress, songXP);
+  updateLevelBar(playerProgress);
+  for (const unlock of newUnlocks) {
+    notifications.notify(`Unlocked: ${unlock.name}!`, '#ffd700', '🔓', 3000);
+  }
+  if (songXP > 0) {
+    notifications.notify(`+${songXP} XP`, '#00ffff', '◆', 2000);
+  }
+
   // Check achievements at song end
   const accuracy = getAccuracy(state);
   const grade = getGrade(accuracy);
@@ -1004,6 +1043,7 @@ function handleLaneHit(lane: number) {
     // Lane burst particles
     const burstColor = LANE_COLORS[lane % LANE_COLORS.length];
     laneBursts.burst(blockPos.x, blockPos.y, blockPos.z, burstColor, quality === 'perfect' ? 12 : 6);
+    beatRingPulser.pulse(blockPos.x, HIT_ZONE_Z, burstColor);
 
     // Animated combo counter
     animCombo.setCombo(state.combo);
@@ -1536,6 +1576,12 @@ function gameLoop() {
 
   // Comfort vignette
   comfortVignette.update(dt);
+
+  // Audio visualizations
+  spectrumAnalyzer.update(dt, beatIntensity);
+  beatRingPulser.update(dt);
+  bassFloorGlow.setBeat(beatIntensity);
+  bassFloorGlow.update(dt);
 
   if (settings.showFPS) fpsCounter.update();
 }
