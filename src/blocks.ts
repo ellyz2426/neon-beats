@@ -242,7 +242,7 @@ export class BlockManager {
 
       // Calculate position based on time until target
       const timeUntilHit = block.targetTime - songTime;
-      const z = HIT_ZONE_Z + timeUntilHit * block.speed;
+      const z = HIT_ZONE_Z - timeUntilHit * block.speed;
       block.mesh.position.z = z;
 
       // Rotate for visual flair
