@@ -97,6 +97,22 @@ export function showSongSelectScreen(
       <h2 style="font-size: 36px; margin-bottom: 30px; letter-spacing: 4px;
         text-shadow: 0 0 20px #ff00ff;">SELECT TRACK</h2>
       <div id="songList" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;">
+        <div class="songItem" data-index="-1" data-id="endless" style="
+          background: rgba(255,255,0,0.05); border: 2px solid rgba(255,255,0,0.3);
+          padding: 14px 20px; border-radius: 8px; cursor: pointer;
+          display: flex; align-items: center; justify-content: space-between;
+          transition: all 0.15s; margin-bottom: 8px;
+        ">
+          <div style="text-align: left;">
+            <div style="font-size: 20px; font-weight: bold; color: #ffff00;
+              text-shadow: 0 0 15px #ffff00;">∞ ENDLESS MODE</div>
+            <div style="font-size: 12px; opacity: 0.5;">Infinite procedural track • Escalating difficulty</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 12px; color: #ffff00; text-transform: uppercase;">∞</div>
+            ${(highScores.get('endless') || 0) > 0 ? `<div style="font-size: 11px; opacity: 0.4;">Best: ${(highScores.get('endless') || 0).toLocaleString()}</div>` : ''}
+          </div>
+        </div>
   `;
 
   for (let i = 0; i < SONG_LIBRARY.length; i++) {

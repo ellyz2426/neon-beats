@@ -179,119 +179,28 @@ export interface Song {
   synthMelody: number[];
 }
 
-// Musical scales for melody generation
-const PENTATONIC = [0, 3, 5, 7, 10];  // minor pentatonic intervals
-const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10];
-
-function noteToFreq(note: number, octave: number = 3): number {
-  return 440 * Math.pow(2, (note - 69 + (octave - 4) * 12) / 12);
-}
-
-function generateBassline(bpm: number, bars: number, root: number): number[] {
-  const beatsPerBar = 4;
-  const totalBeats = bars * beatsPerBar;
-  const pattern: number[] = [];
-  const roots = [root, root + 5, root + 7, root + 3]; // I-IV-V-bIII progression
-  for (let i = 0; i < totalBeats; i++) {
-    const bar = Math.floor(i / beatsPerBar);
-    const rootNote = roots[bar % roots.length];
-    if (i % 2 === 0) {
-      pattern.push(noteToFreq(rootNote, 2));
-    } else {
-      pattern.push(0); // rest
-    }
-  }
-  return pattern;
-}
-
-function generateDrumPattern(bars: number, density: number): { kick: boolean[]; snare: boolean[]; hihat: boolean[] } {
-  const steps = bars * 16;  // 16th notes
-  const kick: boolean[] = [];
-  const snare: boolean[] = [];
-  const hihat: boolean[] = [];
-  for (let i = 0; i < steps; i++) {
-    const beat = i % 16;
-    kick.push(beat === 0 || beat === 8 || (density > 0.5 && beat === 6) || (density > 0.8 && beat === 12));
-    snare.push(beat === 4 || beat === 12 || (density > 0.7 && beat === 10));
-    hihat.push(beat % 2 === 0 || density > 0.6);
-  }
-  return { kick, snare, hihat };
-}
-
-function generateMelody(bpm: number, bars: number, scale: number[], root: number): number[] {
-  const totalSteps = bars * 8; // 8th notes
-  const melody: number[] = [];
-  let prevNote = 0;
-  for (let i = 0; i < totalSteps; i++) {
-    if (Math.random() < 0.6) {
-      const interval = scale[Math.floor(Math.random() * scale.length)];
-      const octave = 4 + Math.floor(Math.random() * 2);
-      prevNote = noteToFreq(root + interval, octave);
-      melody.push(prevNote);
-    } else {
-      melody.push(0); // rest
-    }
-  }
-  return melody;
-}
-
-function generateBeats(bpm: number, duration: number, difficulty: string, numLanes: number): BeatEvent[] {
-  const beats: BeatEvent[] = [];
-  const beatDuration = 60 / bpm;
-  const totalBeats = Math.floor(duration / beatDuration);
-
-  // Difficulty scales
-  const density = difficulty === 'easy' ? 0.3 : difficulty === 'medium' ? 0.5 : difficulty === 'hard' ? 0.7 : 0.85;
-  const holdChance = difficulty === 'easy' ? 0.05 : difficulty === 'medium' ? 0.1 : 0.15;
-  const doubleChance = difficulty === 'hard' ? 0.1 : difficulty === 'expert' ? 0.2 : 0;
-
-  for (let i = 0; i < totalBeats; i++) {
-    if (Math.random() < density) {
-      const time = i * beatDuration + 2; // 2s lead-in
-      const lane = Math.floor(Math.random() * numLanes);
-      let type: 'tap' | 'hold' | 'double' = 'tap';
-
-      if (Math.random() < holdChance) {
-        type = 'hold';
-      } else if (Math.random() < doubleChance) {
-        type = 'double';
-      }
-
-      beats.push({
-        time,
-        lane,
-        type,
-        holdDuration: type === 'hold' ? beatDuration * (1 + Math.floor(Math.random() * 3)) : undefined,
-      });
-
-      // Double: add another lane
-      if (type === 'double') {
-        let lane2 = (lane + 1 + Math.floor(Math.random() * (numLanes - 1))) % numLanes;
-        beats.push({ time, lane: lane2, type: 'tap' });
-      }
-    }
-  }
-
-  return beats.sort((a, b) => a.time - b.time);
-}
+import {
+  generateStructuredBeats,
+  generateStructuredDrums,
+  generateStructuredBass,
+  generateStructuredMelody,
+} from './songgen';
 
 export function generateSong(name: string, bpm: number, difficulty: 'easy' | 'medium' | 'hard' | 'expert', durationSecs: number, numLanes: number = 4): Song {
-  const bars = Math.ceil(durationSecs / (4 * 60 / bpm));
-  const drumDensity = difficulty === 'easy' ? 0.4 : difficulty === 'medium' ? 0.6 : difficulty === 'hard' ? 0.8 : 1.0;
-  const drums = generateDrumPattern(bars, drumDensity);
   const root = 48; // C3
+  const drums = generateStructuredDrums(bpm, durationSecs, difficulty);
 
   return {
     name,
     bpm,
     duration: durationSecs,
     difficulty,
-    beats: generateBeats(bpm, durationSecs, difficulty, numLanes),
-    bassPattern: generateBassline(bpm, bars, root),
+    beats: generateStructuredBeats(bpm, durationSecs, difficulty, numLanes),
+    bassPattern: generateStructuredBass(bpm, durationSecs, root, difficulty),
     kickPattern: drums.kick,
     snarePattern: drums.snare,
     hihatPattern: drums.hihat,
-    synthMelody: generateMelody(bpm, bars, PENTATONIC, root),
+    synthMelody: generateStructuredMelody(bpm, durationSecs, root, difficulty),
   };
 }
 
