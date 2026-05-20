@@ -6,6 +6,7 @@
 import { SONG_LIBRARY, getDifficultyColor, type SongInfo } from './songs';
 import { getAccuracy, getGrade, getGradeColor, loadHighScore, type GameState } from './game';
 import { playMenuSelect } from './audio';
+import { calculateStars, getStarDisplay } from './rating';
 
 // ---- Generic Screen Helpers ----
 
@@ -234,16 +235,22 @@ export function showResultsScreen(
   const accuracy = getAccuracy(state);
   const grade = getGrade(accuracy);
   const gradeColor = getGradeColor(grade);
+  const starRating = calculateStars(state);
 
   screen.innerHTML = `
     <div style="text-align: center; max-width: 500px;">
       <h2 style="font-size: 24px; opacity: 0.6; margin-bottom: 5px;">RESULTS</h2>
       <h1 style="font-size: 48px; color: ${songInfo.color};
-        text-shadow: 0 0 20px ${songInfo.color}; margin-bottom: 20px;">${songInfo.name}</h1>
+        text-shadow: 0 0 20px ${songInfo.color}; margin-bottom: 10px;">${songInfo.name}</h1>
       
       <div style="font-size: 96px; font-weight: bold; color: ${gradeColor};
         text-shadow: 0 0 40px ${gradeColor}, 0 0 80px ${gradeColor};
-        margin: 10px 0; line-height: 1;">${grade}</div>
+        margin: 5px 0; line-height: 1;">${grade}</div>
+      
+      <div style="font-size: 24px; color: ${starRating.color};
+        text-shadow: 0 0 15px ${starRating.color}; margin-bottom: 5px;
+        letter-spacing: 4px;">${getStarDisplay(starRating)}</div>
+      <div style="font-size: 13px; color: ${starRating.color}; opacity: 0.7; margin-bottom: 12px;">${starRating.label}</div>
       
       ${isNewHighScore ? `<div style="font-size: 18px; color: #ffff00;
         text-shadow: 0 0 20px #ffff00; margin-bottom: 15px;

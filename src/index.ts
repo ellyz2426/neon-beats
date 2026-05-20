@@ -29,6 +29,7 @@ import {
   scoreHit,
   scoreMiss,
   getAccuracy,
+  getGrade,
   saveHighScore,
   loadAllHighScores,
   type GameState,
@@ -93,6 +94,14 @@ import {
   type PlayerStats,
 } from './modifiers';
 import {
+  loadAchievements,
+  checkAchievements,
+  queueAchievementNotification,
+  type Achievement,
+  type AchievementContext,
+} from './achievements';
+import { calculateStars } from './rating';
+import {
   showModifiersScreen,
   hideModifiersScreen,
   showStatsScreen,
@@ -135,6 +144,7 @@ let modifiers: Modifiers;
 let playerStats: PlayerStats;
 let songStartRealTime = 0;
 let autoPlayIndex = 0;
+let achievements: Achievement[];
 
 // Key mapping
 const LANE_KEYS_4 = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -190,6 +200,7 @@ async function init() {
   endlessState = createEndlessState();
   modifiers = createDefaultModifiers();
   playerStats = loadStats();
+  achievements = loadAchievements();
 
   // Environment
   environment = createEnvironment(state.numLanes);
@@ -407,17 +418,29 @@ function finishSong() {
 
   // Update persistent stats
   playerStats = updateStatsAfterSong(
-    playerStats,
-    state.score,
-    state.perfects,
-    state.greats,
-    state.goods,
-    state.misses,
-    state.maxCombo,
-    playTime,
-    state.songId,
-    cleared
+    playerStats, state.score, state.perfects, state.greats, state.goods,
+    state.misses, state.maxCombo, playTime, state.songId, cleared
   );
+
+  // Check achievements at song end
+  const accuracy = getAccuracy(state);
+  const grade = getGrade(accuracy);
+  const achCtx: AchievementContext = {
+    totalScore: playerStats.totalScore,
+    bestCombo: playerStats.bestCombo,
+    totalPerfects: playerStats.totalPerfects,
+    totalSongsCleared: playerStats.totalSongsCleared,
+    totalPlayTime: playerStats.totalPlayTime,
+    currentCombo: state.maxCombo,
+    currentScore: state.score,
+    currentPerfects: state.perfects,
+    accuracy,
+    grade,
+    songDifficulty: getSongInfo(state.songId)?.difficulty || '',
+    endlessPhase: endlessState.phase,
+  };
+  const newAch = checkAchievements(achievements, achCtx);
+  for (const a of newAch) queueAchievementNotification(a);
 
   if (state.endless) {
     const fakeSongInfo = {
@@ -533,6 +556,26 @@ function handleLaneHit(lane: number) {
     }
 
     blockManager.removeBlock(result.block);
+
+    // Check achievements on combo milestones
+    if (state.combo % 10 === 0) {
+      const achCtx: AchievementContext = {
+        totalScore: playerStats.totalScore,
+        bestCombo: Math.max(playerStats.bestCombo, state.maxCombo),
+        totalPerfects: playerStats.totalPerfects + state.perfects,
+        totalSongsCleared: playerStats.totalSongsCleared,
+        totalPlayTime: playerStats.totalPlayTime,
+        currentCombo: state.combo,
+        currentScore: state.score,
+        currentPerfects: state.perfects,
+        accuracy: getAccuracy(state),
+        grade: '',
+        songDifficulty: getSongInfo(state.songId)?.difficulty || '',
+        endlessPhase: endlessState.phase,
+      };
+      const newAch = checkAchievements(achievements, achCtx);
+      for (const a of newAch) queueAchievementNotification(a);
+    }
   }
 }
 
