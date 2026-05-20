@@ -126,19 +126,21 @@ export class XRInputManager {
   update(dt: number): number[] {
     if (!this.world) return [];
 
-    // Check if in XR via session
-    this.state.enabled = !!(this.world as any).session;
+    // Check if in XR — try xrSession property or session property  
+    const w = this.world as any;
+    this.state.enabled = !!(w.xrSession || w.session || w.renderer?.xr?.isPresenting);
     if (!this.state.enabled) return [];
 
     const hitsThisFrame: number[] = [];
 
-    // Access gamepads through world.input (XRInputManager)
-    const input = this.world.input;
-    if (!input || !input.gamepads) return hitsThisFrame;
+    // Access gamepads through world.input.xr (IWSDK 0.4.x InputManager)
+    const input = (this.world as any).input;
+    const xrInput = input?.xr || input; // fallback for 0.3.x compat
+    if (!xrInput?.gamepads) return hitsThisFrame;
 
     // Process left controller
-    const leftGP = input.gamepads.left;
-    const rightGP = input.gamepads.right;
+    const leftGP = xrInput.gamepads.left;
+    const rightGP = xrInput.gamepads.right;
 
     // ---- Left Controller ----
     if (leftGP) {
@@ -189,23 +191,24 @@ export class XRInputManager {
       }
     }
 
-    // ---- Controller spatial tracking via XROrigin ----
-    const player = this.world.player;
-    if (player) {
-      const leftRay = player.raySpaces?.left;
-      const rightRay = player.raySpaces?.right;
+    // ---- Controller spatial tracking via playerSpaceEntities (0.4.x) or player (0.3.x) ----
+    const spaces = (this.world as any).playerSpaceEntities;
+    const player = (this.world as any).player;
+    
+    // Try 0.4.x path first, then 0.3.x fallback
+    const leftRayObj = spaces?.raySpaces?.left?.getObject3D?.() || player?.raySpaces?.left;
+    const rightRayObj = spaces?.raySpaces?.right?.getObject3D?.() || player?.raySpaces?.right;
 
-      if (leftRay) {
-        this.state.leftLane = this.getLaneFromController(leftRay);
-        this.updateVelocity(leftRay, this.leftTrack, this.state.leftVelocity, dt);
-        this.state.leftSwing = this.state.leftVelocity.length() > SWING_VELOCITY_THRESHOLD;
-      }
+    if (leftRayObj) {
+      this.state.leftLane = this.getLaneFromController(leftRayObj);
+      this.updateVelocity(leftRayObj, this.leftTrack, this.state.leftVelocity, dt);
+      this.state.leftSwing = this.state.leftVelocity.length() > SWING_VELOCITY_THRESHOLD;
+    }
 
-      if (rightRay) {
-        this.state.rightLane = this.getLaneFromController(rightRay);
-        this.updateVelocity(rightRay, this.rightTrack, this.state.rightVelocity, dt);
-        this.state.rightSwing = this.state.rightVelocity.length() > SWING_VELOCITY_THRESHOLD;
-      }
+    if (rightRayObj) {
+      this.state.rightLane = this.getLaneFromController(rightRayObj);
+      this.updateVelocity(rightRayObj, this.rightTrack, this.state.rightVelocity, dt);
+      this.state.rightSwing = this.state.rightVelocity.length() > SWING_VELOCITY_THRESHOLD;
     }
 
     // ---- Determine hits: trigger press → hit the aimed lane ----
@@ -272,12 +275,13 @@ export class XRInputManager {
   triggerHaptic(hand: 'left' | 'right' | 'both', intensity: number = 0.5, duration: number = 50) {
     if (!this.world || !this.state.enabled) return;
 
-    const input = this.world.input;
-    if (!input?.gamepads) return;
+    const input = (this.world as any).input;
+    const xrInput = input?.xr || input;
+    if (!xrInput?.gamepads) return;
 
     const hands = hand === 'both' ? (['left', 'right'] as const) : ([hand] as const);
     for (const h of hands) {
-      const gp = input.gamepads[h];
+      const gp = xrInput.gamepads[h];
       if (!gp) continue;
 
       try {

@@ -122,18 +122,20 @@ export class VRSaberManager {
   attachToControllers() {
     if (!this.world || this.attached) return;
 
-    const player = this.world.player;
-    if (!player) return;
+    // IWSDK 0.4.x: playerSpaceEntities.gripSpaces; 0.3.x: player.gripSpaces
+    const w = this.world as any;
+    const spaces = w.playerSpaceEntities;
+    const player = w.player;
+    
+    const leftGripObj = spaces?.gripSpaces?.left?.getObject3D?.() || player?.gripSpaces?.left;
+    const rightGripObj = spaces?.gripSpaces?.right?.getObject3D?.() || player?.gripSpaces?.right;
 
-    const leftGrip = player.gripSpaces?.left;
-    const rightGrip = player.gripSpaces?.right;
-
-    if (leftGrip) {
-      leftGrip.add(this.leftSaber.group);
+    if (leftGripObj) {
+      leftGripObj.add(this.leftSaber.group);
       this.leftSaber.show();
     }
-    if (rightGrip) {
-      rightGrip.add(this.rightSaber.group);
+    if (rightGripObj) {
+      rightGripObj.add(this.rightSaber.group);
       this.rightSaber.show();
     }
 

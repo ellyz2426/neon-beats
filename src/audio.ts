@@ -11,9 +11,19 @@ let sfxGain: GainNode | null = null;
 export function initAudio(): AudioContext {
   if (audioCtx) return audioCtx;
   audioCtx = new AudioContext();
+
+  // Master compressor for glue and limiting
+  const compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -12;
+  compressor.knee.value = 6;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.15;
+
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.7;
-  masterGain.connect(audioCtx.destination);
+  masterGain.connect(compressor);
+  compressor.connect(audioCtx.destination);
 
   musicGain = audioCtx.createGain();
   musicGain.gain.value = 0.35;
@@ -304,98 +314,183 @@ function scheduleMusic() {
 }
 
 function playKick(ctx: AudioContext, dest: AudioNode, time: number) {
-  const osc = ctx.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(150, time);
-  osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.6, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-  osc.connect(gain);
-  gain.connect(dest);
-  osc.start(time);
-  osc.stop(time + 0.15);
+  // Sub layer - deep sine
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(160, time);
+  sub.frequency.exponentialRampToValueAtTime(40, time + 0.08);
+  sub.frequency.exponentialRampToValueAtTime(25, time + 0.2);
+  const subGain = ctx.createGain();
+  subGain.gain.setValueAtTime(0.65, time);
+  subGain.gain.setValueAtTime(0.5, time + 0.05);
+  subGain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+  sub.connect(subGain);
+  subGain.connect(dest);
+  sub.start(time);
+  sub.stop(time + 0.25);
+
+  // Click layer - adds attack definition
+  const click = ctx.createOscillator();
+  click.type = 'sine';
+  click.frequency.setValueAtTime(800, time);
+  click.frequency.exponentialRampToValueAtTime(200, time + 0.02);
+  const clickGain = ctx.createGain();
+  clickGain.gain.setValueAtTime(0.4, time);
+  clickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+  click.connect(clickGain);
+  clickGain.connect(dest);
+  click.start(time);
+  click.stop(time + 0.03);
 }
 
 function playSnare(ctx: AudioContext, dest: AudioNode, time: number) {
-  // Noise burst
-  const n = noise(ctx, 0.1);
+  // Noise layer with bandpass for crisp texture
+  const n = noise(ctx, 0.15);
+  const nBand = ctx.createBiquadFilter();
+  nBand.type = 'bandpass';
+  nBand.frequency.value = 3000;
+  nBand.Q.value = 0.8;
   const nGain = ctx.createGain();
-  nGain.gain.setValueAtTime(0.25, time);
-  nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'highpass';
-  filter.frequency.value = 1000;
-  n.connect(filter);
-  filter.connect(nGain);
+  nGain.gain.setValueAtTime(0.3, time);
+  nGain.gain.setValueAtTime(0.2, time + 0.02);
+  nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+  n.connect(nBand);
+  nBand.connect(nGain);
   nGain.connect(dest);
   n.start(time);
-  n.stop(time + 0.1);
+  n.stop(time + 0.15);
 
-  // Body
+  // Body - punchy tonal hit
   const osc = ctx.createOscillator();
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(200, time);
-  osc.frequency.exponentialRampToValueAtTime(100, time + 0.05);
+  osc.frequency.setValueAtTime(250, time);
+  osc.frequency.exponentialRampToValueAtTime(120, time + 0.04);
   const oGain = ctx.createGain();
-  oGain.gain.setValueAtTime(0.3, time);
-  oGain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  oGain.gain.setValueAtTime(0.35, time);
+  oGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
   osc.connect(oGain);
   oGain.connect(dest);
   osc.start(time);
-  osc.stop(time + 0.08);
+  osc.stop(time + 0.1);
+
+  // High snap transient
+  const snap = ctx.createOscillator();
+  snap.type = 'sine';
+  snap.frequency.setValueAtTime(1200, time);
+  snap.frequency.exponentialRampToValueAtTime(400, time + 0.01);
+  const snapGain = ctx.createGain();
+  snapGain.gain.setValueAtTime(0.15, time);
+  snapGain.gain.exponentialRampToValueAtTime(0.001, time + 0.015);
+  snap.connect(snapGain);
+  snapGain.connect(dest);
+  snap.start(time);
+  snap.stop(time + 0.015);
 }
 
 function playHihat(ctx: AudioContext, dest: AudioNode, time: number) {
-  const n = noise(ctx, 0.04);
+  const n = noise(ctx, 0.05);
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.08, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'highpass';
-  filter.frequency.value = 6000;
-  n.connect(filter);
-  filter.connect(gain);
+  gain.gain.setValueAtTime(0.1, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 7000;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 10000;
+  bp.Q.value = 1.5;
+  n.connect(hp);
+  hp.connect(bp);
+  bp.connect(gain);
   gain.connect(dest);
   n.start(time);
-  n.stop(time + 0.04);
+  n.stop(time + 0.05);
 }
 
 function playBass(ctx: AudioContext, dest: AudioNode, time: number, freq: number, dur: number) {
-  const osc = ctx.createOscillator();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(freq, time);
+  // Two detuned oscillators for richness
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(freq, time);
+  osc1.detune.value = -7;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(freq, time);
+  osc2.detune.value = 7;
+
+  // Sub oscillator one octave below
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(freq / 2, time);
+
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(400, time);
+  filter.frequency.setValueAtTime(600, time);
+  filter.frequency.exponentialRampToValueAtTime(200, time + dur * 0.8);
+  filter.Q.value = 3;
+
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.25, time);
-  gain.gain.setValueAtTime(0.25, time + dur * 0.7);
+  gain.gain.setValueAtTime(0.2, time);
+  gain.gain.setValueAtTime(0.18, time + dur * 0.6);
   gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-  osc.connect(filter);
+
+  const subGain = ctx.createGain();
+  subGain.gain.setValueAtTime(0.15, time);
+  subGain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
   filter.connect(gain);
   gain.connect(dest);
-  osc.start(time);
-  osc.stop(time + dur);
+  sub.connect(subGain);
+  subGain.connect(dest);
+
+  osc1.start(time);
+  osc2.start(time);
+  sub.start(time);
+  osc1.stop(time + dur);
+  osc2.stop(time + dur);
+  sub.stop(time + dur);
 }
 
 function playSynth(ctx: AudioContext, dest: AudioNode, time: number, freq: number, dur: number) {
-  const osc = ctx.createOscillator();
-  osc.type = 'square';
-  osc.frequency.setValueAtTime(freq, time);
+  // Main oscillator — pulse width modulation feel via detuned pair
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'square';
+  osc1.frequency.setValueAtTime(freq, time);
+  osc1.detune.value = -5;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(freq * 1.002, time);
+  osc2.detune.value = 5;
+
+  // Filter sweep — open and close
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(2000, time);
-  filter.frequency.exponentialRampToValueAtTime(800, time + dur);
+  filter.frequency.setValueAtTime(3000, time);
+  filter.frequency.exponentialRampToValueAtTime(1200, time + dur * 0.5);
+  filter.frequency.exponentialRampToValueAtTime(600, time + dur);
+  filter.Q.value = 2;
+
+  // ADSR-like envelope
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.08, time);
-  gain.gain.setValueAtTime(0.08, time + dur * 0.6);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-  osc.connect(filter);
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.1, time + 0.01); // attack
+  gain.gain.linearRampToValueAtTime(0.07, time + 0.05); // decay to sustain
+  gain.gain.setValueAtTime(0.07, time + dur * 0.7);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + dur); // release
+
+  osc1.connect(filter);
+  osc2.connect(filter);
   filter.connect(gain);
   gain.connect(dest);
-  osc.start(time);
-  osc.stop(time + dur);
+
+  osc1.start(time);
+  osc2.start(time);
+  osc1.stop(time + dur + 0.05);
+  osc2.stop(time + dur + 0.05);
 }
 
 export function stopMusic() {
