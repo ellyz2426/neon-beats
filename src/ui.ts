@@ -34,7 +34,10 @@ function removeScreen(id: string) {
 
 // ---- Title Screen ----
 
-export function showTitleScreen(onStart: () => void): HTMLDivElement {
+export function showTitleScreen(onStart: () => void, extraButtons?: {
+  onCampaign?: () => void;
+  onThemeBuilder?: () => void;
+}): HTMLDivElement {
   removeScreen('titleScreen');
   const screen = createScreen('titleScreen');
 
@@ -60,6 +63,10 @@ export function showTitleScreen(onStart: () => void): HTMLDivElement {
         text-shadow: 0 0 10px #00ffff; box-shadow: 0 0 20px rgba(0,255,255,0.2);
         transition: all 0.2s;
       ">PLAY</button>
+      <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+        <button id="campaignBtn" style="background: transparent; border: 1px solid #ff00ff; color: #ff00ff; padding: 10px 25px; font-size: 14px; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 2px; border-radius: 4px; text-shadow: 0 0 8px #ff00ff; transition: all 0.2s;">CAMPAIGN</button>
+        <button id="themeBuilderBtn" style="background: transparent; border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.5); padding: 10px 25px; font-size: 14px; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 2px; border-radius: 4px; transition: all 0.2s;">THEMES</button>
+      </div>
       <div style="margin-top: 30px; font-size: 12px; opacity: 0.3;">
         Use D F J K keys to hit blocks • SPACE to pause
       </div>
@@ -82,6 +89,24 @@ export function showTitleScreen(onStart: () => void): HTMLDivElement {
     playMenuSelect();
     onStart();
   });
+
+  // Campaign button
+  const campaignBtn = document.getElementById('campaignBtn');
+  if (campaignBtn && extraButtons?.onCampaign) {
+    campaignBtn.addEventListener('click', () => {
+      playMenuSelect();
+      extraButtons.onCampaign!();
+    });
+  }
+
+  // Theme builder button
+  const themeBtn = document.getElementById('themeBuilderBtn');
+  if (themeBtn && extraButtons?.onThemeBuilder) {
+    themeBtn.addEventListener('click', () => {
+      playMenuSelect();
+      extraButtons.onThemeBuilder!();
+    });
+  }
 
   return screen;
 }

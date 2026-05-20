@@ -30,6 +30,10 @@ export interface Settings {
   colorblindMode: ColorblindMode;
   reducedMotion: boolean;
   largeText: boolean;
+  blockScale: number;         // 0.5 - 2.0 multiplier for block size
+  extendedTimingWindow: boolean; // wider hit windows for motor impairment
+  autoHold: boolean;          // auto-complete hold blocks on tap
+  highContrastBlocks: boolean; // adds extra contrast borders to blocks
 
   // Theme
   theme: ThemeId;
@@ -59,6 +63,10 @@ export const DEFAULT_SETTINGS: Settings = {
   colorblindMode: 'off',
   reducedMotion: false,
   largeText: false,
+  blockScale: 1.0,
+  extendedTimingWindow: false,
+  autoHold: false,
+  highContrastBlocks: false,
   theme: 'neon',
   noteSpeed: 1.0,
   audioOffset: 0,

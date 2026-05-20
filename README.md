@@ -1,135 +1,210 @@
-# Neon Beats VR 🎵
+# 🎵 Neon Beats VR
 
-A neon holodeck rhythm game built with [IWSDK](https://github.com/nickreynolds/immersive-web-sdk) — the Immersive Web SDK for WebXR.
+**A rhythm game set in a neon holodeck.** Blocks fly toward you — slash them with VR sabers or hit them with keyboard keys, perfectly timed to procedural synthwave music.
 
-**[▶ Play Live](https://ellyz2426.github.io/neon-beats/)**
+🌐 **[Play Now](https://ellyz2426.github.io/neon-beats/)** | Built with [IWSDK](https://github.com/nickslevine/iwsdk)
 
-## About
+![Neon Beats VR](https://img.shields.io/badge/Songs-33-00ffff?style=flat-square) ![Modes](https://img.shields.io/badge/Modes-7-ff00ff?style=flat-square) ![Status](https://img.shields.io/badge/Status-Playable-00ff88?style=flat-square)
 
-Neon Beats VR is a full-featured rhythm game where blocks fly toward you along 4 neon lanes. Hit them in time with procedurally-generated synthwave music. The game runs in both browser (keyboard/mouse) and VR mode (headset + controllers).
+---
 
 ## Features
 
-### Core Gameplay
-- **11 songs** spanning easy to expert difficulty (95-190 BPM)
-- **Endless Mode** with infinite procedural phases that escalate in difficulty
-- **4-lane gameplay** using keyboard (D/F/J/K), mouse click, or VR controllers
-- **Procedural synthwave music** — full drum kit, bass, melody, and arpeggios via Web Audio API
-- **Per-song difficulty selector** — play any song at any difficulty level
+### 🎮 Gameplay
+- **33 procedurally-generated songs** across 5 difficulty levels (78–210 BPM)
+- **4 beat types**: Tap, Hold, Double, Bomb, Slide
+- **Combo system** with ×1–×8 multiplier
+- **Star rating** (0–3 stars per song per difficulty)
+- **Health system** with healing on perfect hits
 
-### Special Blocks
-- 💣 **Bombs** (red octahedron) — avoid these! Hitting them deals damage
-- 💎 **Slides** (diamond with arrow) — hit the start lane, then swipe to the target lane for bonus points
+### 🎵 Audio
+- **Procedural synthwave music engine** — every song is unique
+- Layered drum synthesis (kick sub+click, bandpass snare, filtered hihat)
+- Detuned oscillator bass with sub-octave warmth
+- PWM-style synth leads with filter sweeps and ADSR envelopes
+- Master compressor for punchy, cohesive sound
+- 7 chord progressions × 5 scales × 5 song structures = massive variety
 
-### Scoring & Progression
-- **Perfect/Great/Good/Miss** timing windows with combo multiplier (up to ×8)
-- **17 achievements** with toast notifications
-- **Star rating system** (0-3 stars per song)
-- **Per-song leaderboard** with top 10 scores, grades, and dates
-- **Input replay & ghost system** — compete against your best performance
+### 🥽 VR Support (Quest/PCVR)
+- **Dual saber gameplay** — slash blocks with VR controllers
+- Controller ray → lane selection for precision aiming
+- Trigger to hit, Grip for secondary actions
+- Motion-based swing detection (no trigger needed!)
+- **Haptic feedback** on hits (intensity varies by quality)
+- VR comfort options (snap turn, vignette)
+- Spatial UI menu navigation with thumbsticks
 
-### Combo Challenges
-- Random mini-objectives during songs (e.g. "10 perfects in a row", "No misses for 30 seconds")
-- Bronze/Silver/Gold/Diamond difficulty tiers with bonus score rewards
+### 🏆 Campaign Mode
+- **5 themed worlds**: Genesis → Pulse → Storm → The Void → Omega
+- **Star gate progression** — earn stars to unlock new worlds
+- Story intro sequences with animated narratives
+- World completion rewards (themes, modifiers, titles)
+- Persistent save across sessions
 
-### Game Modifiers
-- **No Fail** — health can't reach zero
-- **Half Speed** — notes approach at 50% speed
-- **Auto Play** — watch the AI play
-- **Mirror** — lanes are reversed
-- **Hidden** / **Fade In** — visibility changes
+### 🎯 Game Modes
+1. **Free Play** — pick any song, any difficulty
+2. **Campaign** — story-driven progression through 5 worlds
+3. **Endless/Survival** — infinite blocks with escalating difficulty
+4. **Zen Mode** — no health, no score, just vibes
+5. **Practice** — guided 5-step tutorial (single lane → combos)
+6. **Challenge Mode** — Bronze/Silver/Gold/Diamond objectives per song
+7. **Boss Battles** — wave-based boss encounters with attack patterns
 
-### Visual Effects
-- Neon holodeck environment with grid floor, walls, ceiling
-- Particle explosions, beat pulse rings, speed lines, streak fire
-- 8-level hype system that escalates visual intensity with combo
-- Waveform visualizers, tunnel rings, neon tube decorations
-- Combo trail, multiplier ring, lane auras, streak counter, beat graph
+### 🎨 Customization
+- **10 built-in themes** (Neon, Retro, Ocean, Lava, Crystal, etc.)
+- **Custom Theme Builder** — pick colors, neon intensity, fog density
+- **Per-lane color customization**
+- **6 game modifiers**: No Fail, Half Speed, Auto Play, Mirror, Hidden, Fade In
+- Colorblind mode support
 
-### Audio
-- Full procedural music engine with structured phrase-based generation
-- Song preview on hover in the select screen
-- Per-song audio with buildups, drops, and transitions
-- Hit/miss/combo sound effects
+### 📊 Stats & Leaderboards
+- Per-song, per-difficulty local leaderboards (top 10)
+- Personal best tracking with dates
+- Lifetime stats: total score, play time, accuracy, songs cleared
+- Achievement system (30+ achievements)
 
-### Settings & Accessibility
-- **Volume controls** (master, music, SFX)
-- **Key binding configuration** — rebind lane keys
-- **Visual settings** — screen shake intensity, particle density
-- **5 visual themes** — Neon, Cyberpunk, Ocean, Space, Sakura
-- **Colorblind modes** — Deuteranopia, Protanopia, Tritanopia palettes
-- **Reduced motion** mode
-- **Screen reader** announcements
-- **Practice mode** — adjustable speed, section looping, metronome, timing guides
-- **Tutorial** — interactive first-time player onboarding
-
-### Technical
-- Dual runtime — browser-first (`{ xr: false }`) with automatic VR detection
-- ~8,500 lines of TypeScript across 33 source files
-- Persistent stats and high scores via localStorage
-- FPS counter and performance monitoring
-- Built with IWSDK + Vite + Three.js
+---
 
 ## Controls
 
-| Action | Keyboard | VR |
-|--------|----------|-----|
-| Lane 1 | D | Left trigger |
-| Lane 2 | F | Left grip |
-| Lane 3 | J | Right trigger |
-| Lane 4 | K | Right grip |
-| Pause | Space/Esc | Menu button |
+### ⌨️ Keyboard
+| Key | Action |
+|-----|--------|
+| **D** | Hit Lane 1 (Red) |
+| **F** | Hit Lane 2 (Green) |
+| **J** | Hit Lane 3 (Blue) |
+| **K** | Hit Lane 4 (Orange) |
+| **Space** | Pause |
+| **Escape** | Pause / Back |
+| **←/→** | Navigate menus |
+| **Enter** | Select |
+
+### 🎮 VR Controllers
+| Input | Action |
+|-------|--------|
+| **Trigger** | Hit block in aimed lane |
+| **Swing Motion** | Hit block (no trigger needed) |
+| **Grip** | Secondary action (bomb dodge) |
+| **Thumbstick** | Menu navigation |
+| **Thumbstick Click** | Select/Confirm |
+
+---
+
+## Tech Stack
+
+- **IWSDK 0.4.x** — Immersive Web SDK for WebXR
+- **Three.js** (via @iwsdk/core re-exports)
+- **Web Audio API** — procedural music & SFX synthesis
+- **TypeScript** — full type safety
+- **Vite** — blazing fast builds
+
+### Architecture
+
+```
+src/
+├── index.ts          — Main game loop, world setup, input handling
+├── audio.ts          — Audio engine, procedural SFX, music playback
+├── songgen.ts        — Procedural beat/drum/bass/melody generation
+├── songs.ts          — 33-song library with metadata
+├── blocks.ts         — Block spawning, movement, hit detection
+├── xrinput.ts        — VR controller input (triggers, tracking, haptics)
+├── sabers.ts         — VR saber rendering and attachment
+├── campaign.ts       — 5-world campaign with star gates
+├── patterns.ts       — Hand-crafted beat pattern library
+├── effects.ts        — Particle system with object pooling
+├── hitanims.ts       — Per-type hit animations (shatter, dissolve, explode)
+├── reactive.ts       — Beat-reactive walls, floor grid, sky particles
+├── laneflash.ts      — Lane flash + approach beam + hit zone ring
+├── themes.ts         — 10 visual themes
+├── customtheme.ts    — Custom theme builder
+├── ui.ts             — Menu screens (title, song select, results, pause)
+├── tutorial.ts       — 12-step tutorial with keyboard navigation
+├── practice.ts       — Interactive practice mode
+├── leaderboard.ts    — Per-song per-difficulty leaderboards
+├── achievements.ts   — 30+ achievement definitions
+├── boss.ts           — Boss battle system
+├── endless.ts        — Endless/survival mode
+├── zen.ts            — Zen mode (no health/score)
+├── settings.ts       — Persistent settings
+├── game.ts           — Core game state management
+└── ... (60+ files total)
+```
+
+---
 
 ## Development
 
 ```bash
-# Prerequisites: Node.js 20+, IWSDK
-npm run dev    # Development server
-npm run build  # Production build
+# Install dependencies
+npm install
+
+# Start dev server (auto-detects headless/GPU)
+npm run dev
+
+# Type check
+npx tsc --noEmit
+
+# Production build
+npm run build
 ```
 
-## Architecture
+### Deploy to GitHub Pages
 
-```
-src/
-├── index.ts           — Main entry, game loop orchestration
-├── audio.ts           — Audio engine, music playback
-├── audioeffects.ts    — Reverb, delay, compressor chain
-├── blocks.ts          — Block spawning, movement, hit detection
-├── specialblocks.ts   — Bomb/slide block types
-├── songgen.ts         — Structured song generation
-├── songs.ts           — Song library (11 tracks)
-├── preview.ts         — Song preview audio
-├── game.ts            — Game state, scoring, timing
-├── environment.ts     — Holodeck environment, lanes
-├── effects.ts         — Particles, hit flash, screen shake
-├── trails.ts          — Speed lines, beat pulses, streak fire
-├── visualizer.ts      — Waveform bars, tunnel rings
-├── neontubes.ts       — Neon tube decorations
-├── combovisuals.ts    — Combo trail, multiplier ring, beat graph
-├── hud.ts             — Score/combo/health/progress HUD
-├── ui.ts              — Title/song select/results/pause screens
-├── screens.ts         — Modifiers & stats screens
-├── settings.ts        — Settings system with persistence
-├── themes.ts          — 5 visual themes
-├── challenges.ts      — Combo challenges during gameplay
-├── leaderboard.ts     — Per-song local leaderboard
-├── replay.ts          — Input recording & ghost replay
-├── endless.ts         — Endless mode logic
-├── modifiers.ts       — Game modifiers & persistent stats
-├── achievements.ts    — 17 achievements with notifications
-├── rating.ts          — Star rating calculation
-├── hype.ts            — Combo hype level system
-├── feedback.ts        — Timing meter, screen flash
-├── titlevisuals.ts    — Title screen animation, FPS counter
-├── tutorial.ts        — Interactive tutorial system
-├── practice.ts        — Practice mode with speed control
-└── accessibility.ts   — Screen reader, haptics, contrast
+```bash
+npm run build
+cd dist
+git init && git checkout -b gh-pages
+git add -A && git commit -m "Deploy"
+git remote add origin https://github.com/YOUR_USER/neon-beats.git
+git push -f origin gh-pages
 ```
 
-## IWSDK Daily Build
+---
 
-This project was built as part of the **IWSDK Daily Build** series — daily VR/MR projects built from scratch using the Immersive Web SDK.
+## Song Library
 
-- **Build #3** — May 20, 2026
-- **Previous builds:** [VR Pong](https://github.com/ellyz2426/vr-pong), [Galaga VR](https://github.com/ellyz2426/galaga-vr)
+| Song | BPM | Difficulty | Description |
+|------|-----|-----------|-------------|
+| Neon Pulse | 120 | Easy | Chill synthwave groove |
+| Midnight Drive | 95 | Easy | Atmospheric neon cruise |
+| Crystal Rain | 108 | Easy | Cascading crystal melodies |
+| Deep Dive | 85 | Easy | Ambient underwater vibes |
+| Pixel Paradise | 115 | Easy | Chiptune retro dreamscape |
+| Aurora Dreams | 92 | Easy | Northern lights shimmer |
+| Vapor Sunset | 88 | Easy | Dreamy vaporwave |
+| Frozen Circuit | 78 | Easy | Sub-zero ambient tones |
+| Digital Rush | 130 | Medium | Driving beats |
+| Circuit Breaker | 140 | Medium | Electrifying rhythms |
+| Neon Samurai | 135 | Medium | Precision warrior pace |
+| Ghost Protocol | 125 | Medium | Mysterious sequences |
+| Zero Gravity | 110 | Medium | Weightless grooves |
+| Moonwalk | 112 | Medium | Lunar groove |
+| Neon Highway | 128 | Medium | Light-speed cruising |
+| Quantum Echo | 138 | Medium | Superposition beats |
+| Laser Storm | 150 | Hard | Intense light patterns |
+| Quantum Flux | 160 | Hard | Reality bends |
+| Electric Heart | 145 | Hard | Pulse-pounding |
+| Thunder Pulse | 155 | Hard | Electric crackle |
+| Solar Flare | 165 | Hard | Explosive eruptions |
+| Steel Rain | 148 | Hard | Industrial pelting |
+| Plasma Core | 158 | Hard | Reactor rhythms |
+| Void Protocol | 170 | Expert | Only the fastest survive |
+| Infinite Loop | 180 | Expert | Ultimate recursion |
+| Data Storm | 190 | Expert | Sensory overload |
+| Chrome Fury | 175 | Expert | Relentless industrial |
+| Cyber Dragon | 185 | Expert | Dragon fire at 185 BPM |
+| Hyperdrive | 200 | Expert | Maximum velocity |
+| Binary Storm | 172 | Expert | Torrent of data |
+| Omega Protocol | 210 | Expert | No mercy. |
+| Starlight Waltz | 100 | Easy | Cosmic 3/4 drift |
+| Crystal Cave | 102 | Easy | Digital cavern sparkles |
+
+---
+
+## License
+
+MIT
+
+---
+
+*Built with 🎵 and ⚡ using IWSDK*
