@@ -170,6 +170,19 @@ import {
 import { XRInputManager } from './xrinput';
 import { VRSaberManager } from './sabers';
 import { VRMenuController, injectVRMenuStyles } from './vrmenu';
+import { HitAnimationSystem } from './hitanims';
+import { VRAimIndicator } from './vrlaneindicator';
+import { DynamicMusicEngine } from './music';
+import { CrowdSystem } from './crowd';
+import { MusicalHitSounds } from './musicalhits';
+import { ScoreCardGenerator } from './scorecard';
+import {
+  createLivesState, checkMilestones, loseLife, useBomb,
+  createSurvivalState, startSurvival, updateSurvival,
+  onSurvivalBlockHit, getSurvivalSpeedMultiplier,
+  getDailyChallenge, hasDailyChallengeBeenPlayed,
+  saveDailyChallengeScore, type LivesState, type SurvivalState,
+} from './lives';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -238,6 +251,16 @@ let xrInput: XRInputManager;
 let saberManager: VRSaberManager;
 let vrMenu: VRMenuController;
 let wasInXR = false;
+
+// New systems
+let hitAnims: HitAnimationSystem;
+let vrAimIndicator: VRAimIndicator;
+let dynamicMusic: DynamicMusicEngine;
+let crowdSystem: CrowdSystem;
+let musicalHits: MusicalHitSounds;
+let scoreCard: ScoreCardGenerator;
+let livesState: LivesState;
+let survivalState: SurvivalState;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -376,6 +399,32 @@ async function init() {
   vrMenu = new VRMenuController();
   vrMenu.init(world);
   injectVRMenuStyles();
+
+  // Hit animations
+  hitAnims = new HitAnimationSystem();
+  world.scene.add(hitAnims.getGroup());
+
+  // VR aim indicator
+  vrAimIndicator = new VRAimIndicator();
+  vrAimIndicator.init(world, state.numLanes, LANE_SPACING, HIT_ZONE_Z, LANE_COLORS);
+
+  // Dynamic music engine
+  dynamicMusic = new DynamicMusicEngine();
+
+  // Crowd system
+  crowdSystem = new CrowdSystem();
+  crowdSystem.init();
+
+  // Musical hit sounds
+  musicalHits = new MusicalHitSounds();
+  musicalHits.init();
+
+  // Score card generator
+  scoreCard = new ScoreCardGenerator();
+
+  // Lives & survival
+  livesState = createLivesState(!modifiers.noFail);
+  survivalState = createSurvivalState();
 
   setupInput();
 
@@ -827,6 +876,40 @@ function handleLaneHit(lane: number) {
     showTimingFeedback(hud, quality);
     timingMeter.showTiming(result.timeDiff, quality);
 
+    // Musical hit sounds (play notes that build a melody)
+    if (quality === 'perfect' || quality === 'great' || quality === 'good') {
+      musicalHits.playHit(lane, quality, state.numLanes);
+    }
+
+    // Hit animations based on quality
+    const blockPos = result.block.mesh.position;
+    const laneColor = LANE_COLORS[lane % LANE_COLORS.length];
+    if (quality === 'perfect') {
+      hitAnims.spawnPerfect(blockPos.x, blockPos.y, blockPos.z);
+    } else if (result.block.specialType === 'double') {
+      hitAnims.spawnExplode(blockPos.x, blockPos.y, blockPos.z, laneColor);
+    } else if (result.block.isHold) {
+      hitAnims.spawnDissolve(blockPos.x, blockPos.y, blockPos.z, laneColor);
+    } else {
+      hitAnims.spawnShatter(blockPos.x, blockPos.y, blockPos.z, laneColor);
+    }
+
+    // Survival mode tracking
+    if (survivalState.active) {
+      onSurvivalBlockHit(survivalState);
+    }
+
+    // Crowd reaction on combo milestones
+    if (state.combo > 0 && state.combo % 25 === 0) {
+      crowdSystem.cheer();
+    }
+
+    // Check for life/bomb milestones
+    const rewards = checkMilestones(livesState, state.combo, state.score);
+    for (const r of rewards) {
+      comboPopups.show(r, '#ffd700', 55, 20);
+    }
+
     // Record for replay
     inputRecorder.recordEvent(songTime, lane, quality, state.score, state.combo);
 
@@ -1004,6 +1087,16 @@ function handleMiss(block: ActiveBlock) {
   if (xrInput.isActive()) {
     xrInput.triggerHaptic('both', 0.3, 100);
     saberManager.flashMiss('both');
+  }
+
+  // Miss visual effect
+  const missPos = block.mesh.position;
+  hitAnims.spawnMissEffect(missPos.x, missPos.y, missPos.z);
+  musicalHits.playMiss();
+
+  // Crowd gasp on miss during high combo
+  if (state.combo >= 15) {
+    crowdSystem.gasp();
   }
 
   // Update combo visuals
@@ -1216,6 +1309,31 @@ function gameLoop() {
 
   // Performance monitor
   perfMonitor.addFrame(dt);
+
+  // Update new systems
+  hitAnims.update(dt);
+  dynamicMusic.updateCombo(state.combo);
+  dynamicMusic.update(dt);
+  crowdSystem.updatePerformance(state.combo, state.health, state.maxHealth);
+  crowdSystem.update(dt);
+
+  // VR aim indicator
+  if (xrInput.isActive()) {
+    const xrState = xrInput.getState();
+    vrAimIndicator.updateAimedLanes(xrState.leftLane, xrState.rightLane, LANE_COLORS);
+    vrAimIndicator.setVisible(true);
+  } else {
+    vrAimIndicator.setVisible(false);
+  }
+  vrAimIndicator.update(dt);
+
+  // Survival mode
+  if (survivalState.active) {
+    const waveMsg = updateSurvival(survivalState, dt, state.combo, state.score);
+    if (waveMsg) {
+      comboPopups.show(waveMsg, '#ffdd00', 55, 25);
+    }
+  }
 
   if (settings.showFPS) fpsCounter.update();
 }
