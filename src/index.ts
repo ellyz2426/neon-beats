@@ -194,6 +194,12 @@ import {
   type BossState,
 } from './boss';
 import { FrameRateMonitor, getQualitySettings } from './pool';
+import { BeatEditor, loadCustomSongs, customSongToPlayable, customSongToSongInfo } from './editor';
+import { showLoadingScreen, updateLoadingProgress, hideLoadingScreen, setupErrorBoundary } from './loading';
+import {
+  loadExtendedStats, saveExtendedStats, updateExtendedStats,
+  showStatsDashboard, hideStatsDashboard, type ExtendedStats,
+} from './dashboard';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -280,6 +286,8 @@ let missEffect: MissScreenEffect;
 let perfectStreakGlow: PerfectStreakGlow;
 let bossState: BossState;
 let frameMonitor: FrameRateMonitor;
+let beatEditor: BeatEditor;
+let extendedStats: ExtendedStats;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -460,7 +468,10 @@ async function init() {
   perfectStreakGlow = new PerfectStreakGlow();
   bossState = createBossState();
   frameMonitor = new FrameRateMonitor();
+  beatEditor = new BeatEditor();
+  extendedStats = loadExtendedStats();
   createBossHUD();
+  setupErrorBoundary();
 
   setupInput();
 
@@ -772,6 +783,15 @@ function finishSong() {
   playerStats = updateStatsAfterSong(
     playerStats, state.score, state.perfects, state.greats, state.goods,
     state.misses, state.maxCombo, playTime, state.songId, cleared
+  );
+
+  // Update extended stats
+  const accuracyForStats = getAccuracy(state);
+  const gradeForStats = getGrade(accuracyForStats);
+  updateExtendedStats(
+    extendedStats, state, state.songId,
+    selectedDifficulty || getSongInfo(state.songId)?.difficulty || 'medium',
+    accuracyForStats, gradeForStats, playTime
   );
 
   // Check achievements at song end
