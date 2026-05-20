@@ -232,7 +232,13 @@ export function generateBossSong(boss: BossConfig, numLanes: number, difficulty:
     name: boss.name,
     bpm: boss.bpm,
     duration: boss.duration,
+    difficulty: 'expert' as const,
     beats: beats.sort((a, b) => a.time - b.time),
+    bassPattern: [],
+    kickPattern: [],
+    snarePattern: [],
+    hihatPattern: [],
+    synthMelody: [],
   };
 }
 

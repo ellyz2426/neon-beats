@@ -70,7 +70,13 @@ export function customSongToPlayable(custom: CustomSong): Song {
     name: custom.name,
     bpm: custom.bpm,
     duration: custom.duration,
+    difficulty: 'medium' as const,
     beats: [...custom.beats].sort((a, b) => a.time - b.time),
+    bassPattern: [],
+    kickPattern: [],
+    snarePattern: [],
+    hihatPattern: [],
+    synthMelody: [],
   };
 }
 
@@ -337,7 +343,7 @@ export class BeatEditor {
       time: snappedTime,
       lane,
       type: this.state.selectedBeatType,
-      duration: this.state.selectedBeatType === 'hold' ? beatDur * 2 : 0,
+      holdDuration: this.state.selectedBeatType === 'hold' ? beatDur * 2 : undefined,
     });
 
     playHitSound('good');
@@ -444,8 +450,8 @@ export class BeatEditor {
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.8;
 
-      if (beat.type === 'hold' && beat.duration) {
-        const w = (beat.duration / beatDur) * pixelsPerBeat;
+      if (beat.type === 'hold' && beat.holdDuration) {
+        const w = (beat.holdDuration / beatDur) * pixelsPerBeat;
         ctx.fillRect(x - 4, y + 4, w, laneH - 8);
       } else if (beat.type === 'bomb') {
         ctx.beginPath();

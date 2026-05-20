@@ -18,7 +18,7 @@ export class SpectrumAnalyzer {
   private bars: Mesh[] = [];
   private materials: MeshBasicMaterial[] = [];
   private analyser: AnalyserNode | null = null;
-  private dataArray: Uint8Array | null = null;
+  private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private barCount: number;
 
   constructor(barCount: number = 32, width: number = 4, height: number = 2) {

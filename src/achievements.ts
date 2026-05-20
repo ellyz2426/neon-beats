@@ -26,6 +26,9 @@ export interface AchievementContext {
   grade: string;
   songDifficulty: string;
   endlessPhase: number;
+  maxCombo: number;
+  score: number;
+  songsCompleted: number;
 }
 
 const ACHIEVEMENT_DEFS: Omit<Achievement, 'unlocked'>[] = [

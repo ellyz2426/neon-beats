@@ -162,8 +162,10 @@ export function playCountdownBeep(final: boolean) {
 export interface BeatEvent {
   time: number;       // seconds from song start
   lane: number;       // 0-3
-  type: 'tap' | 'hold' | 'double';
+  type: 'tap' | 'hold' | 'double' | 'bomb' | 'slide';
   holdDuration?: number;
+  duration?: number;  // used by patterns/boss for hold-style events
+  targetLane?: number; // for slide events
 }
 
 export interface Song {

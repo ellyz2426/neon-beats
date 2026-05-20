@@ -344,25 +344,18 @@ async function init() {
   } catch {}
 
   world = await World.create(container, {
-    xr: xrAvailable,
+    xr: xrAvailable ? { offer: 'once' as const } : false as any,
     render: {
       near: 0.01,
       far: 200,
-      camera: {
-        position: [0, 1.6, 0],
-        lookAt: [0, 1.0, HIT_ZONE_Z],
-      },
-    },
-    input: {
-      canvasPointerEvents: !xrAvailable,
     },
     features: {
       grabbing: xrAvailable,
-      locomotion: xrAvailable ? true : { browserControls: false },
+      locomotion: xrAvailable ? true : false,
       physics: false,
       spatialUI: false,
     },
-  });
+  } as any);
 
   // Scene setup — theme-aware
   world.scene.fog = new Fog(currentTheme.fogColor, currentTheme.fogNear, currentTheme.fogFar);
@@ -548,7 +541,7 @@ async function init() {
   }
 
   lastFrameTime = performance.now();
-  world.onUpdate(gameLoop);
+  (world as any).onUpdate ? (world as any).onUpdate(gameLoop) : requestAnimationFrame(function loop() { gameLoop(); requestAnimationFrame(loop); });
 }
 
 // ---- Input ----
@@ -895,6 +888,9 @@ function finishSong() {
     grade,
     songDifficulty: getSongInfo(state.songId)?.difficulty || '',
     endlessPhase: endlessState.phase,
+    maxCombo: state.maxCombo,
+    score: state.score,
+    songsCompleted: playerStats.totalSongsCleared,
   };
   const newAch = checkAchievements(achievements, achCtx);
   for (const a of newAch) queueAchievementNotification(a);
@@ -1027,9 +1023,9 @@ function handleLaneHit(lane: number) {
     const laneColor = LANE_COLORS[lane % LANE_COLORS.length];
     if (quality === 'perfect') {
       hitAnims.spawnPerfect(blockPos.x, blockPos.y, blockPos.z);
-    } else if (result.block.specialType === 'double') {
+    } else if (result.block.event.type === 'double') {
       hitAnims.spawnExplode(blockPos.x, blockPos.y, blockPos.z, laneColor);
-    } else if (result.block.isHold) {
+    } else if (result.block.event.type === 'hold') {
       hitAnims.spawnDissolve(blockPos.x, blockPos.y, blockPos.z, laneColor);
     } else {
       hitAnims.spawnShatter(blockPos.x, blockPos.y, blockPos.z, laneColor);
@@ -1163,6 +1159,9 @@ function handleLaneHit(lane: number) {
         grade: '',
         songDifficulty: getSongInfo(state.songId)?.difficulty || '',
         endlessPhase: endlessState.phase,
+        maxCombo: Math.max(playerStats.bestCombo, state.maxCombo),
+        score: state.score,
+        songsCompleted: playerStats.totalSongsCleared,
       };
       const newAch = checkAchievements(achievements, achCtx);
       for (const a of newAch) queueAchievementNotification(a);
@@ -1457,7 +1456,7 @@ function gameLoop() {
   }
 
   // Screen shake
-  if (!world.isInXR && settings.screenShakeIntensity > 0) {
+  if (!(world as any).isInXR && settings.screenShakeIntensity > 0) {
     environment.position.x = screenShake.offset.x;
     environment.position.y = screenShake.offset.y;
     blockContainer.position.x = screenShake.offset.x;

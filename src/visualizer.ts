@@ -18,7 +18,7 @@ export class WaveformVisualizer {
   private container: Group;
   private barCount: number;
   private analyser: AnalyserNode | null = null;
-  private dataArray: Uint8Array | null = null;
+  private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private side: 'left' | 'right' | 'back';
 
   constructor(container: Group, side: 'left' | 'right' | 'back', barCount: number = 32) {

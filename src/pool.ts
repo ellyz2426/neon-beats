@@ -4,7 +4,7 @@
 // Eliminates GC spikes from rapid create/destroy
 // ============================================================
 
-import { Mesh, MeshBasicMaterial, BoxGeometry, Group, type Geometry, type Material } from '@iwsdk/core';
+import { Mesh, MeshBasicMaterial, BoxGeometry, Group, BufferGeometry, type Material } from '@iwsdk/core';
 
 // ---- Generic Pool ----
 
@@ -59,7 +59,7 @@ export class MeshPool {
   private parent: Group;
 
   constructor(
-    geometry: BoxGeometry | Geometry,
+    geometry: BoxGeometry | BufferGeometry,
     materialFactory: () => MeshBasicMaterial,
     parent: Group,
     initialSize: number = 50

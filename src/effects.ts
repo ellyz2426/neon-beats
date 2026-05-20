@@ -19,6 +19,7 @@ import { LANE_COLORS, HIT_ZONE_Z, LANE_SPACING } from './environment';
 
 interface Particle {
   mesh: Mesh;
+  material: MeshBasicMaterial;
   velocity: Vector3;
   life: number;
   maxLife: number;
@@ -58,6 +59,7 @@ export class ParticleSystem {
 
       this.particles.push({
         mesh,
+        material: mesh.material as MeshBasicMaterial,
         velocity: new Vector3(
           (Math.random() - 0.5) * spread,
           Math.random() * spread * 0.8 + 0.5,

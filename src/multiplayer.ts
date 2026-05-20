@@ -64,7 +64,7 @@ export function recordPlayerResult(session: MultiplayerSession, state: GameState
     greats: state.greats,
     goods: state.goods,
     misses: state.misses,
-    stars: calculateStars(state),
+    stars: calculateStars(state).stars,
   });
   session.currentPlayer++;
 }

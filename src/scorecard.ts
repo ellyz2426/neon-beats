@@ -24,8 +24,8 @@ export class ScoreCardGenerator {
     const W = this.canvas.width;
     const H = this.canvas.height;
     const accuracy = getAccuracy(state);
-    const grade = getGrade(state);
-    const stars = calculateStars(state);
+    const grade = getGrade(accuracy);
+    const starRating = calculateStars(state);
 
     // Background
     const grad = ctx.createLinearGradient(0, 0, 0, H);
@@ -110,7 +110,7 @@ export class ScoreCardGenerator {
     ctx.font = '24px monospace';
     ctx.textAlign = 'center';
     for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = i < stars ? '#ffd700' : '#333';
+      ctx.fillStyle = i < starRating.stars ? '#ffd700' : '#333';
       ctx.fillText('★', 230 + i * 35, starY);
     }
 

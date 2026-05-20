@@ -47,7 +47,7 @@ export interface ActiveBlock {
 const BLOCK_SIZE = 0.35;
 const APPROACH_TIME = 2.0; // seconds for block to travel from spawn to hit zone
 
-export function createBlockMesh(lane: number, type: 'tap' | 'hold' | 'double', holdDuration?: number): Group {
+export function createBlockMesh(lane: number, type: string, holdDuration?: number): Group {
   const group = new Group();
   const color = LANE_COLORS[lane % LANE_COLORS.length];
 
