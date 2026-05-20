@@ -110,6 +110,7 @@ import {
 import { TitleVisuals, FPSCounter, getComboColor } from './titlevisuals';
 import { getHypeLevel, checkHypeLevelChange, resetHypeLevel } from './hype';
 import { NeonTubeSystem, HolodeckHorizon } from './neontubes';
+import { TimingMeter, ScreenFlash, getTimingLabel } from './feedback';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -152,6 +153,8 @@ let titleVisuals: TitleVisuals;
 let fpsCounter: FPSCounter;
 let neonTubes: NeonTubeSystem;
 let holoHorizon: HolodeckHorizon;
+let timingMeter: TimingMeter;
+let screenFlash: ScreenFlash;
 
 // Key mapping
 const LANE_KEYS_4 = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -216,6 +219,9 @@ async function init() {
   // Neon decorations
   neonTubes = new NeonTubeSystem(effectsGroup);
   holoHorizon = new HolodeckHorizon(effectsGroup);
+  timingMeter = new TimingMeter();
+  screenFlash = new ScreenFlash();
+  timingMeter.hide();
 
   // Environment
   environment = createEnvironment(state.numLanes);
@@ -415,6 +421,7 @@ function startPlaying() {
   state.phase = 'playing';
   paused = false;
   showHUD(hud);
+  timingMeter.show();
   speedLines.setActive(true);
   tunnelRings.setActive(true);
   songStartRealTime = performance.now();
@@ -425,6 +432,7 @@ function finishSong() {
   state.phase = 'results';
   stopMusic();
   hideHUD(hud);
+  timingMeter.hide();
   blockManager.clear();
   speedLines.setActive(false);
   speedLines.clear();
@@ -539,6 +547,7 @@ function handleLaneHit(lane: number) {
 
     playHitSound(quality);
     showTimingFeedback(hud, quality);
+    timingMeter.showTiming(result.timeDiff, quality);
 
     // Visuals (hype-aware)
     const hype = getHypeLevel(state.combo);
@@ -615,6 +624,7 @@ function handleMiss(block: ActiveBlock) {
   }
   playMissSound();
   showTimingFeedback(hud, 'miss');
+  screenFlash.flash('#ff004440', 0.2, 150);
   screenShake.trigger(0.25);
   bgPulse.pulse('#ff0044', 0.4);
 }
