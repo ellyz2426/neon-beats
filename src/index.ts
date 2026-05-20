@@ -107,6 +107,8 @@ import {
   showStatsScreen,
   hideStatsScreen,
 } from './screens';
+import { TitleVisuals, FPSCounter, getComboColor } from './titlevisuals';
+import { getHypeLevel, checkHypeLevelChange, resetHypeLevel } from './hype';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -145,6 +147,8 @@ let playerStats: PlayerStats;
 let songStartRealTime = 0;
 let autoPlayIndex = 0;
 let achievements: Achievement[];
+let titleVisuals: TitleVisuals;
+let fpsCounter: FPSCounter;
 
 // Key mapping
 const LANE_KEYS_4 = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -201,6 +205,10 @@ async function init() {
   modifiers = createDefaultModifiers();
   playerStats = loadStats();
   achievements = loadAchievements();
+
+  // Title visuals & FPS
+  titleVisuals = new TitleVisuals();
+  fpsCounter = new FPSCounter();
 
   // Environment
   environment = createEnvironment(state.numLanes);
@@ -294,9 +302,11 @@ function showTitle() {
   hideModifiersScreen();
   hideStatsScreen();
   showTitleScreen(() => {
+    titleVisuals.stop();
     hideTitleScreen();
     showSongSelect();
   });
+  titleVisuals.start();
 }
 
 function showSongSelect() {
@@ -348,6 +358,7 @@ function startCountdown() {
   nextBeatIndex = 0;
   autoPlayIndex = 0;
   totalPausedTime = 0;
+  resetHypeLevel();
 
   // Apply modifiers
   if (modifiers.noFail) state.maxHealth = 999;
@@ -522,10 +533,12 @@ function handleLaneHit(lane: number) {
     playHitSound(quality);
     showTimingFeedback(hud, quality);
 
-    // Visuals
+    // Visuals (hype-aware)
+    const hype = getHypeLevel(state.combo);
     const pos = result.block.mesh.position.clone();
     const color = LANE_COLORS[lane % LANE_COLORS.length];
-    const pCount = quality === 'perfect' ? 30 : quality === 'great' ? 18 : 10;
+    const basePCount = quality === 'perfect' ? 30 : quality === 'great' ? 18 : 10;
+    const pCount = Math.round(basePCount * hype.particleMultiplier);
     particles.emit(pos, color, pCount, quality === 'perfect' ? 5 : 3);
     hitFlash.flash(pos, color, quality);
     flashHitMarker(environment, lane, quality === 'perfect' ? '#ffffff' : color.getStyle());
@@ -556,6 +569,12 @@ function handleLaneHit(lane: number) {
     }
 
     blockManager.removeBlock(result.block);
+
+    // Check hype level change
+    const hypeChange = checkHypeLevelChange(state.combo);
+    if (hypeChange.changed && hypeChange.direction === 'up' && hypeChange.level.name) {
+      comboPopups.show(hypeChange.level.name, getComboColor(state.combo), 50, 28);
+    }
 
     // Check achievements on combo milestones
     if (state.combo % 10 === 0) {
@@ -611,6 +630,7 @@ function gameLoop() {
     tunnelRings.update(dt, 0);
     waveformLeft.update(dt, 0, now / 1000);
     waveformRight.update(dt, 0, now / 1000);
+    fpsCounter.update();
     return;
   }
 
@@ -711,6 +731,7 @@ function gameLoop() {
   // Game over / complete
   if (state.health <= 0 && !modifiers.noFail) { finishSong(); return; }
   if (!state.endless && currentSong && songTime >= currentSong.duration + 1) finishSong();
+  fpsCounter.update();
 }
 
 // ---- Start ----
