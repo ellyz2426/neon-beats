@@ -167,6 +167,9 @@ import {
   triggerHaptic,
   PerformanceMonitor,
 } from './accessibility';
+import { XRInputManager } from './xrinput';
+import { VRSaberManager } from './sabers';
+import { VRMenuController, injectVRMenuStyles } from './vrmenu';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -229,6 +232,12 @@ let beatGraph: BeatGraph;
 let laneAura: LaneAura;
 let streakCounter: StreakCounter;
 let perfMonitor: PerformanceMonitor;
+
+// XR Controller input
+let xrInput: XRInputManager;
+let saberManager: VRSaberManager;
+let vrMenu: VRMenuController;
+let wasInXR = false;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -357,6 +366,17 @@ async function init() {
   // Block manager
   blockManager = new BlockManager(blockContainer, state.numLanes);
 
+  // XR Controller Input
+  xrInput = new XRInputManager();
+  xrInput.init(world, state.numLanes, LANE_SPACING, HIT_ZONE_Z);
+
+  saberManager = new VRSaberManager();
+  saberManager.init(world);
+
+  vrMenu = new VRMenuController();
+  vrMenu.init(world);
+  injectVRMenuStyles();
+
   setupInput();
 
   // Show tutorial on first launch, then title
@@ -459,6 +479,8 @@ function showTitle() {
     showSongSelect();
   });
   titleVisuals.start();
+  // Scan for VR menu buttons after a frame
+  setTimeout(() => vrMenu.scanButtons(), 100);
 }
 
 function showSongSelect() {
@@ -522,6 +544,8 @@ function showSongSelect() {
       showTitle();
     }
   );
+  // Scan for VR menu buttons after song select renders
+  setTimeout(() => vrMenu.scanButtons(), 100);
 }
 
 function startCountdown() {
@@ -815,6 +839,15 @@ function handleLaneHit(lane: number) {
     // Haptic feedback
     const hapticIntensity = quality === 'perfect' ? 0.8 : quality === 'great' ? 0.5 : 0.3;
     triggerHaptic(hapticIntensity, quality === 'perfect' ? 60 : 40);
+    // XR-specific haptic on the hand that hit
+    if (xrInput.isActive()) {
+      const hitHand = xrInput.getHitHand();
+      if (hitHand) {
+        xrInput.triggerHaptic(hitHand, hapticIntensity, quality === 'perfect' ? 60 : 40);
+        // Flash saber on hit
+        saberManager.pulseBeat(hapticIntensity);
+      }
+    }
 
     // Update challenges
     const accuracy = getAccuracy(state);
@@ -967,6 +1000,12 @@ function handleMiss(block: ActiveBlock) {
   screenShake.trigger(0.25 * settings.screenShakeIntensity);
   bgPulse.pulse('#ff0044', 0.4);
 
+  // XR miss feedback
+  if (xrInput.isActive()) {
+    xrInput.triggerHaptic('both', 0.3, 100);
+    saberManager.flashMiss('both');
+  }
+
   // Update combo visuals
   beatGraph.addHit('miss');
   streakCounter.onMiss();
@@ -1050,6 +1089,47 @@ function gameLoop() {
       comboPopups.show(`PHASE ${endlessState.phase}`, getEndlessPhaseColor(endlessState.phase), 50, 25);
       comboPopups.show(getEndlessDifficultyLabel(endlessState), '#ffffff', 50, 32);
     }
+  }
+
+  // ---- XR Controller Input ----
+  const xrHits = xrInput.update(dt);
+  if (xrHits.length > 0 && state.phase === 'playing' && !paused && !modifiers.autoPlay) {
+    for (const lane of xrHits) {
+      handleLaneHit(lane);
+    }
+    // Haptic feedback for hits
+    const hitHand = xrInput.getHitHand();
+    if (hitHand) {
+      xrInput.triggerHaptic(hitHand, 0.6, 40);
+    }
+  }
+
+  // Update sabers (attach/detach, color by aimed lane, pulse)
+  saberManager.update(dt);
+  if (xrInput.isActive()) {
+    const xrState = xrInput.getState();
+    saberManager.updateLaneColors(LANE_COLORS, xrState.leftLane, xrState.rightLane);
+
+    // Pulse sabers on beat
+    if (beatIntensity > 0.5) {
+      saberManager.pulseBeat(beatIntensity * 0.4);
+    }
+
+    // XR-enter transition detection
+    if (!wasInXR) {
+      wasInXR = true;
+      announce('VR mode activated — use controllers to hit blocks');
+    }
+  } else if (wasInXR) {
+    wasInXR = false;
+  }
+
+  // VR Menu navigation (when not playing)
+  if (xrInput.isActive() && state.phase !== 'playing') {
+    vrMenu.setEnabled(true);
+    vrMenu.update(dt, xrInput.getState());
+  } else {
+    vrMenu.setEnabled(false);
   }
 
   // Auto-play
