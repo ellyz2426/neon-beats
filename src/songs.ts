@@ -1,6 +1,7 @@
 // ============================================================
 // Neon Beats VR — Song Library
 // Pre-designed songs with procedural generation
+// Per-song difficulty override support
 // ============================================================
 
 import { generateSong, type Song } from './audio';
@@ -14,9 +15,11 @@ export interface SongInfo {
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
   color: string; // Primary neon color
   description: string;
+  unlockCondition?: string; // What unlocks this song
 }
 
 export const SONG_LIBRARY: SongInfo[] = [
+  // --- Original 7 songs ---
   {
     id: 'neon-pulse',
     name: 'Neon Pulse',
@@ -87,18 +90,62 @@ export const SONG_LIBRARY: SongInfo[] = [
     color: '#ffff00',
     description: 'The ultimate test — endless recursion',
   },
+
+  // --- New songs ---
+  {
+    id: 'midnight-drive',
+    name: 'Midnight Drive',
+    artist: 'RetroWave',
+    bpm: 95,
+    duration: 120,
+    difficulty: 'easy',
+    color: '#4488ff',
+    description: 'A slow, atmospheric cruise through neon streets',
+  },
+  {
+    id: 'crystal-rain',
+    name: 'Crystal Rain',
+    artist: 'GlassHarp',
+    bpm: 108,
+    duration: 100,
+    difficulty: 'easy',
+    color: '#66ffdd',
+    description: 'Gentle cascading melodies like falling crystals',
+  },
+  {
+    id: 'electric-heart',
+    name: 'Electric Heart',
+    artist: 'PulseCode',
+    bpm: 145,
+    duration: 95,
+    difficulty: 'hard',
+    color: '#ff3388',
+    description: 'Feel the beat pulsing through your veins',
+  },
+  {
+    id: 'data-storm',
+    name: 'Data Storm',
+    artist: 'BinaryGhost',
+    bpm: 190,
+    duration: 80,
+    difficulty: 'expert',
+    color: '#ff8800',
+    description: 'Blazing fast — prepare for sensory overload',
+  },
 ];
 
 const songCache = new Map<string, Song>();
 
-export function getSong(id: string, numLanes: number = 4): Song {
-  const key = `${id}-${numLanes}`;
-  if (songCache.has(key)) return songCache.get(key)!;
-
+// Get a song, optionally overriding its native difficulty
+export function getSong(id: string, numLanes: number = 4, difficultyOverride?: string): Song {
   const info = SONG_LIBRARY.find(s => s.id === id);
   if (!info) throw new Error(`Song not found: ${id}`);
 
-  const song = generateSong(info.name, info.bpm, info.difficulty, info.duration, numLanes);
+  const difficulty = (difficultyOverride || info.difficulty) as 'easy' | 'medium' | 'hard' | 'expert';
+  const key = `${id}-${numLanes}-${difficulty}`;
+  if (songCache.has(key)) return songCache.get(key)!;
+
+  const song = generateSong(info.name, info.bpm, difficulty, info.duration, numLanes);
   songCache.set(key, song);
   return song;
 }
@@ -115,4 +162,27 @@ export function getDifficultyColor(diff: string): string {
     case 'expert': return '#ff0044';
     default: return '#ffffff';
   }
+}
+
+export function getDifficultyLabel(diff: string): string {
+  switch (diff) {
+    case 'easy': return 'EASY';
+    case 'medium': return 'MEDIUM';
+    case 'hard': return 'HARD';
+    case 'expert': return 'EXPERT';
+    default: return diff.toUpperCase();
+  }
+}
+
+export const ALL_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert'] as const;
+
+// Clear cached songs (useful when changing difficulty)
+export function clearSongCache() {
+  songCache.clear();
+}
+
+// Get the default difficulty for a song
+export function getDefaultDifficulty(id: string): string {
+  const info = SONG_LIBRARY.find(s => s.id === id);
+  return info?.difficulty || 'medium';
 }

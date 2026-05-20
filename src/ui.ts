@@ -1,12 +1,15 @@
 // ============================================================
 // Neon Beats VR — UI Screens
-// Title, Song Select, Results, Settings
+// Title, Song Select, Results, Pause
+// v1.0: Difficulty picker, settings/leaderboard/tutorial buttons,
+//       song preview integration, challenge results
 // ============================================================
 
-import { SONG_LIBRARY, getDifficultyColor, type SongInfo } from './songs';
+import { SONG_LIBRARY, getDifficultyColor, getDifficultyLabel, ALL_DIFFICULTIES, type SongInfo } from './songs';
 import { getAccuracy, getGrade, getGradeColor, loadHighScore, type GameState } from './game';
 import { playMenuSelect } from './audio';
 import { calculateStars, getStarDisplay } from './rating';
+import { startPreview, stopPreview } from './preview';
 
 // ---- Generic Screen Helpers ----
 
@@ -44,8 +47,11 @@ export function showTitleScreen(onStart: () => void): HTMLDivElement {
         background-clip: text; filter: drop-shadow(0 0 30px rgba(255,0,102,0.5));
         animation: titlePulse 2s ease-in-out infinite;
       ">NEON BEATS</h1>
-      <p style="font-size: 16px; opacity: 0.5; letter-spacing: 4px; margin-bottom: 60px;">
+      <p style="font-size: 16px; opacity: 0.5; letter-spacing: 4px; margin-bottom: 10px;">
         VR RHYTHM EXPERIENCE
+      </p>
+      <p style="font-size: 11px; opacity: 0.25; letter-spacing: 2px; margin-bottom: 50px;">
+        v1.0 • ${SONG_LIBRARY.length} tracks • Endless mode
       </p>
       <button id="startBtn" style="
         background: transparent; border: 2px solid #00ffff; color: #00ffff;
@@ -84,6 +90,8 @@ export function hideTitleScreen() { removeScreen('titleScreen'); }
 
 // ---- Song Select Screen ----
 
+let previewHoverTimer: number | null = null;
+
 export function showSongSelectScreen(
   selectedIndex: number,
   highScores: Map<string, number>,
@@ -94,10 +102,10 @@ export function showSongSelectScreen(
   const screen = createScreen('songSelect');
 
   let html = `
-    <div style="text-align: center; max-width: 600px; width: 90%;">
-      <h2 style="font-size: 36px; margin-bottom: 30px; letter-spacing: 4px;
+    <div style="text-align: center; max-width: 650px; width: 90%;">
+      <h2 style="font-size: 36px; margin-bottom: 20px; letter-spacing: 4px;
         text-shadow: 0 0 20px #ff00ff;">SELECT TRACK</h2>
-      <div id="songList" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;">
+      <div id="songList" style="display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto;">
         <div class="songItem" data-index="-1" data-id="endless" style="
           background: rgba(255,255,0,0.05); border: 2px solid rgba(255,255,0,0.3);
           padding: 14px 20px; border-radius: 8px; cursor: pointer;
@@ -121,21 +129,34 @@ export function showSongSelectScreen(
     const hs = highScores.get(song.id) || 0;
     const diffColor = getDifficultyColor(song.difficulty);
     html += `
-      <div class="songItem" data-index="${i}" data-id="${song.id}" style="
+      <div class="songItem" data-index="${i}" data-id="${song.id}" data-bpm="${song.bpm}" data-diff="${song.difficulty}" data-name="${song.name}" style="
         background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
         padding: 12px 20px; border-radius: 8px; cursor: pointer;
         display: flex; align-items: center; justify-content: space-between;
         transition: all 0.15s;
         ${i === selectedIndex ? `border-color: ${song.color}; background: rgba(255,255,255,0.1);` : ''}
       ">
-        <div style="text-align: left;">
+        <div style="text-align: left; flex: 1;">
           <div style="font-size: 18px; font-weight: bold; color: ${song.color};
             text-shadow: 0 0 10px ${song.color};">${song.name}</div>
           <div style="font-size: 12px; opacity: 0.5;">${song.artist} • ${song.bpm} BPM • ${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}</div>
+          <div style="font-size: 10px; opacity: 0.3; margin-top: 2px;">${song.description}</div>
         </div>
-        <div style="text-align: right;">
-          <div style="font-size: 12px; color: ${diffColor}; text-transform: uppercase;">${song.difficulty}</div>
-          ${hs > 0 ? `<div style="font-size: 11px; opacity: 0.4;">Best: ${hs.toLocaleString()}</div>` : ''}
+        <div style="text-align: right; min-width: 90px;">
+          <div style="font-size: 12px; color: ${diffColor}; text-transform: uppercase; font-weight: bold;">${song.difficulty}</div>
+          <!-- Difficulty selector -->
+          <div style="display: flex; gap: 2px; margin-top: 3px; justify-content: flex-end;">
+            ${ALL_DIFFICULTIES.map(d => {
+              const dc = getDifficultyColor(d);
+              const isDefault = d === song.difficulty;
+              return `<span class="diffBtn" data-song="${song.id}" data-diff="${d}" style="
+                width: 8px; height: 8px; border-radius: 50%; cursor: pointer;
+                background: ${isDefault ? dc : 'rgba(255,255,255,0.1)'};
+                border: 1px solid ${dc}40;
+              " title="${getDifficultyLabel(d)}"></span>`;
+            }).join('')}
+          </div>
+          ${hs > 0 ? `<div style="font-size: 11px; opacity: 0.4; margin-top: 2px;">Best: ${hs.toLocaleString()}</div>` : ''}
         </div>
       </div>
     `;
@@ -144,22 +165,40 @@ export function showSongSelectScreen(
   html += `
       </div>
       </div>
-      <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
-        <button class="songItem" data-id="_modifiers" style="
+      <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: center; flex-wrap: wrap;">
+        <button class="songItem navBtn" data-id="_modifiers" style="
           background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.3);
-          color: #00ffff; padding: 8px 20px; font-size: 13px;
+          color: #00ffff; padding: 7px 14px; font-size: 12px;
           font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
           transition: all 0.2s;
-        ">⚙ MODIFIERS</button>
-        <button class="songItem" data-id="_stats" style="
+        ">⚙ Mods</button>
+        <button class="songItem navBtn" data-id="_settings" style="
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.3);
+          color: #00ffff; padding: 7px 14px; font-size: 12px;
+          font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
+          transition: all 0.2s;
+        ">🔧 Settings</button>
+        <button class="songItem navBtn" data-id="_stats" style="
           background: rgba(255,255,255,0.03); border: 1px solid rgba(255,0,255,0.3);
-          color: #ff00ff; padding: 8px 20px; font-size: 13px;
+          color: #ff00ff; padding: 7px 14px; font-size: 12px;
           font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
           transition: all 0.2s;
-        ">📊 STATS</button>
+        ">📊 Stats</button>
+        <button class="songItem navBtn" data-id="_leaderboard" style="
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(255,204,0,0.3);
+          color: #ffcc00; padding: 7px 14px; font-size: 12px;
+          font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
+          transition: all 0.2s;
+        ">🏆 Board</button>
+        <button class="songItem navBtn" data-id="_tutorial" style="
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,136,0.3);
+          color: #00ff88; padding: 7px 14px; font-size: 12px;
+          font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
+          transition: all 0.2s;
+        ">📖 Tutorial</button>
       </div>
       <button id="backBtn" style="
-        margin-top: 12px; background: transparent; border: 1px solid rgba(255,255,255,0.3);
+        margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.3);
         color: rgba(255,255,255,0.5); padding: 8px 30px; font-size: 14px;
         font-family: 'Courier New', monospace; cursor: pointer; border-radius: 4px;
         transition: all 0.2s;
@@ -170,30 +209,80 @@ export function showSongSelectScreen(
         background: rgba(255,255,255,0.1) !important;
         transform: translateX(5px);
       }
+      .navBtn:hover { transform: scale(1.05) !important; }
+      .diffBtn:hover { transform: scale(1.5); }
     </style>
   `;
 
   screen.innerHTML = html;
 
   // Song click handlers
-  const items = screen.querySelectorAll('.songItem');
+  const items = screen.querySelectorAll('.songItem:not(.navBtn)');
   items.forEach((item) => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't trigger on difficulty dot clicks
+      if ((e.target as HTMLElement).classList.contains('diffBtn')) return;
       playMenuSelect();
+      stopPreview();
       const id = (item as HTMLElement).dataset.id!;
       onSelect(id);
+    });
+
+    // Song preview on hover
+    item.addEventListener('mouseenter', () => {
+      const el = item as HTMLElement;
+      const songId = el.dataset.id;
+      if (!songId || songId === 'endless') return;
+      if (previewHoverTimer) clearTimeout(previewHoverTimer);
+      previewHoverTimer = window.setTimeout(() => {
+        const bpm = parseInt(el.dataset.bpm || '120');
+        const diff = (el.dataset.diff || 'medium') as 'easy' | 'medium' | 'hard' | 'expert';
+        const name = el.dataset.name || '';
+        startPreview(name, bpm, diff, songId);
+      }, 600);
+    });
+    item.addEventListener('mouseleave', () => {
+      if (previewHoverTimer) clearTimeout(previewHoverTimer);
+      stopPreview();
+    });
+  });
+
+  // Nav button handlers
+  screen.querySelectorAll('.navBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playMenuSelect();
+      stopPreview();
+      onSelect((btn as HTMLElement).dataset.id!);
+    });
+  });
+
+  // Difficulty dot handlers
+  screen.querySelectorAll('.diffBtn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const songId = (btn as HTMLElement).dataset.song!;
+      const diff = (btn as HTMLElement).dataset.diff!;
+      playMenuSelect();
+      // Notify parent about difficulty selection, then start the song
+      onSelect(`_diff:${diff}`);
+      onSelect(songId);
     });
   });
 
   document.getElementById('backBtn')!.addEventListener('click', () => {
     playMenuSelect();
+    stopPreview();
     onBack();
   });
 
   return screen;
 }
 
-export function hideSongSelectScreen() { removeScreen('songSelect'); }
+export function hideSongSelectScreen() {
+  stopPreview();
+  if (previewHoverTimer) clearTimeout(previewHoverTimer);
+  removeScreen('songSelect');
+}
 
 // ---- Countdown Screen ----
 
@@ -242,23 +331,23 @@ export function showResultsScreen(
       <h2 style="font-size: 24px; opacity: 0.6; margin-bottom: 5px;">RESULTS</h2>
       <h1 style="font-size: 48px; color: ${songInfo.color};
         text-shadow: 0 0 20px ${songInfo.color}; margin-bottom: 10px;">${songInfo.name}</h1>
-      
+
       <div style="font-size: 96px; font-weight: bold; color: ${gradeColor};
         text-shadow: 0 0 40px ${gradeColor}, 0 0 80px ${gradeColor};
         margin: 5px 0; line-height: 1;">${grade}</div>
-      
+
       <div style="font-size: 24px; color: ${starRating.color};
         text-shadow: 0 0 15px ${starRating.color}; margin-bottom: 5px;
         letter-spacing: 4px;">${getStarDisplay(starRating)}</div>
       <div style="font-size: 13px; color: ${starRating.color}; opacity: 0.7; margin-bottom: 12px;">${starRating.label}</div>
-      
+
       ${isNewHighScore ? `<div style="font-size: 18px; color: #ffff00;
         text-shadow: 0 0 20px #ffff00; margin-bottom: 15px;
         animation: newHS 0.5s ease-in-out infinite alternate;">★ NEW HIGH SCORE ★</div>` : ''}
-      
+
       <div style="font-size: 36px; margin-bottom: 20px;
         text-shadow: 0 0 15px #00ffff;">${state.score.toLocaleString()}</div>
-      
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px;
         font-size: 14px; text-align: left; padding: 0 20px;">
         <div><span style="color: #00ffff;">PERFECT:</span> ${state.perfects}</div>
@@ -268,7 +357,7 @@ export function showResultsScreen(
         <div><span style="opacity: 0.6;">MAX COMBO:</span> ${state.maxCombo}</div>
         <div><span style="opacity: 0.6;">ACCURACY:</span> ${accuracy.toFixed(1)}%</div>
       </div>
-      
+
       <div style="display: flex; gap: 15px; justify-content: center;">
         <button id="retryBtn" style="
           background: transparent; border: 2px solid #ff00ff; color: #ff00ff;
