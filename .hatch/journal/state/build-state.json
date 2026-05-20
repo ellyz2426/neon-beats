@@ -1,0 +1,44 @@
+{
+  "project": "neon-beats",
+  "version": "1.0",
+  "buildDate": "2026-05-20",
+  "buildNumber": 3,
+  "series": "IWSDK Daily Builds",
+  "repo": "https://github.com/ellyz2426/neon-beats",
+  "live": "https://ellyz2426.github.io/neon-beats/",
+  "concept": "Neon holodeck rhythm game with procedural synthwave music",
+  "genre": "rhythm",
+  "framework": "IWSDK (Immersive Web SDK)",
+  "runtime": "browser-first with VR detection",
+  "stats": {
+    "sourceFiles": 33,
+    "totalLines": 8485,
+    "songs": 11,
+    "themes": 5,
+    "achievements": 17,
+    "modifiers": 6,
+    "specialBlockTypes": 2
+  },
+  "features": [
+    "11 songs (95-190 BPM) + endless mode",
+    "Special blocks (bombs, slides)",
+    "Combo challenges with tiered rewards",
+    "5 visual themes (neon, cyberpunk, ocean, space, sakura)",
+    "Settings system (volume, keybinds, visuals, accessibility)",
+    "Per-song leaderboard",
+    "Input replay and ghost system",
+    "Interactive tutorial",
+    "Practice mode with speed control",
+    "Song preview on hover",
+    "3 colorblind modes",
+    "17 achievements",
+    "Star rating system",
+    "Audio effects chain (reverb, delay, compressor)",
+    "Procedural synthwave music engine"
+  ],
+  "sessions": [
+    "12d01d56-37fa-4480-a201-212e9bbdd994",
+    "633ce0ed-fc2d-4a4b-9389-83e148b80fb5",
+    "caeba17f-6b0c-42cc-834c-97b8a6e2cca6"
+  ]
+}
