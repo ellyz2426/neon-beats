@@ -200,6 +200,16 @@ import {
   loadExtendedStats, saveExtendedStats, updateExtendedStats,
   showStatsDashboard, hideStatsDashboard, type ExtendedStats,
 } from './dashboard';
+import {
+  CHALLENGE_LIBRARY, loadChallengeProgress, evaluateChallenges,
+  showChallengeList, type ChallengeProgress,
+} from './challengemode';
+import { createZenModeState, updateZenMode, ZenParticleField, showZenHUD, updateZenHUD, hideZenHUD, type ZenModeState } from './zen';
+import { SFXPool } from './sfx';
+import {
+  createMultiplayerSession, recordPlayerResult, isSessionComplete,
+  showMultiplayerResults, showPlayerSetup, type MultiplayerSession,
+} from './multiplayer';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -288,6 +298,12 @@ let bossState: BossState;
 let frameMonitor: FrameRateMonitor;
 let beatEditor: BeatEditor;
 let extendedStats: ExtendedStats;
+let challengeProgress: Map<string, ChallengeProgress>;
+let zenState: ZenModeState;
+let zenParticles: ZenParticleField;
+let sfxPool: SFXPool;
+let multiplayerSession: MultiplayerSession | null = null;
+let noMissStreakTime = 0;  // tracks how long since last miss (seconds)
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -470,6 +486,13 @@ async function init() {
   frameMonitor = new FrameRateMonitor();
   beatEditor = new BeatEditor();
   extendedStats = loadExtendedStats();
+  challengeProgress = loadChallengeProgress();
+  zenState = createZenModeState();
+  zenParticles = new ZenParticleField();
+  world.scene.add(zenParticles.getGroup());
+  zenParticles.hide();
+  sfxPool = new SFXPool();
+  sfxPool.init();
   createBossHUD();
   setupErrorBoundary();
 
@@ -793,6 +816,16 @@ function finishSong() {
     selectedDifficulty || getSongInfo(state.songId)?.difficulty || 'medium',
     accuracyForStats, gradeForStats, playTime
   );
+
+  // Evaluate challenge objectives
+  const difficulty = selectedDifficulty || getSongInfo(state.songId)?.difficulty || 'medium';
+  const completedChallenges = evaluateChallenges(state, difficulty, challengeProgress, noMissStreakTime);
+  for (const cId of completedChallenges) {
+    const challenge = CHALLENGE_LIBRARY.find(c => c.id === cId);
+    if (challenge) {
+      comboPopups.show(`${challenge.icon} ${challenge.name} Complete!`, '#ffd700', 60, 20);
+    }
+  }
 
   // Check achievements at song end
   const accuracy = getAccuracy(state);
@@ -1167,10 +1200,16 @@ function handleMiss(block: ActiveBlock) {
     onBossMiss(bossState);
   }
 
+  // Reset no-miss streak
+  noMissStreakTime = 0;
+
   // Crowd gasp on miss during high combo
   if (state.combo >= 15) {
     crowdSystem.gasp();
   }
+
+  // Varied miss sounds
+  sfxPool.playMissVariant();
 
   // Update combo visuals
   beatGraph.addHit('miss');
@@ -1448,6 +1487,18 @@ function gameLoop() {
 
   // Dynamic quality monitoring
   frameMonitor.addFrame(dt);
+
+  // Track no-miss streak time
+  if (state.misses === 0 || state.combo > 0) {
+    noMissStreakTime += dt;
+  }
+
+  // Zen mode updates
+  if (zenState.active) {
+    const zenResult = updateZenMode(zenState, dt);
+    zenParticles.update(dt, now / 1000, zenResult.breathIntensity, zenResult.color);
+    updateZenHUD(zenState.timeAlive);
+  }
 
   if (settings.showFPS) fpsCounter.update();
 }
