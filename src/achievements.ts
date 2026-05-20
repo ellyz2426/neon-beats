@@ -114,6 +114,111 @@ const ACHIEVEMENT_DEFS: Omit<Achievement, 'unlocked'>[] = [
     icon: '⏰', color: '#ff00ff',
     condition: (ctx) => ctx.totalPlayTime >= 3600,
   },
+
+  // ---- New Achievements ----
+  // Combo mastery
+  {
+    id: 'combo_500', name: 'Transcendent', description: 'Reach a 500 combo',
+    icon: '🌌', color: '#ff00ff',
+    condition: (ctx) => ctx.maxCombo >= 500,
+  },
+  // Accuracy
+  {
+    id: 'accuracy_95', name: 'Sharpshooter', description: 'Finish a song with 95%+ accuracy',
+    icon: '🎯', color: '#00ffff',
+    condition: (ctx) => ctx.accuracy >= 0.95,
+  },
+  {
+    id: 'accuracy_99', name: 'Virtually Perfect', description: 'Finish a song with 99%+ accuracy',
+    icon: '💫', color: '#ffd700',
+    condition: (ctx) => ctx.accuracy >= 0.99,
+  },
+  // Scoring
+  {
+    id: 'score_200k', name: 'Score Legend', description: 'Score 200,000 in a single song',
+    icon: '👑', color: '#ffd700',
+    condition: (ctx) => ctx.score >= 200000,
+  },
+  // Songs
+  {
+    id: 'songs_5', name: 'Explorer', description: 'Complete 5 different songs',
+    icon: '🗺', color: '#44ff88',
+    condition: (ctx) => ctx.songsCompleted >= 5,
+  },
+  {
+    id: 'songs_10', name: 'Traveler', description: 'Complete 10 different songs',
+    icon: '🌍', color: '#44ff88',
+    condition: (ctx) => ctx.songsCompleted >= 10,
+  },
+  {
+    id: 'songs_20', name: 'Globetrotter', description: 'Complete 20 different songs',
+    icon: '🚀', color: '#44ff88',
+    condition: (ctx) => ctx.songsCompleted >= 20,
+  },
+  // Full combos
+  {
+    id: 'fc_easy', name: 'No Misses', description: 'Full combo on an Easy song',
+    icon: '💚', color: '#00ff88',
+    condition: (ctx) => ctx.accuracy >= 1.0 && ctx.songDifficulty === 'easy',
+  },
+  {
+    id: 'fc_hard', name: 'Iron Will', description: 'Full combo on a Hard song',
+    icon: '🧡', color: '#ff6600',
+    condition: (ctx) => ctx.accuracy >= 1.0 && ctx.songDifficulty === 'hard',
+  },
+  {
+    id: 'fc_expert', name: 'Diamond Hands', description: 'Full combo on an Expert song',
+    icon: '💎', color: '#ff0044',
+    condition: (ctx) => ctx.accuracy >= 1.0 && ctx.songDifficulty === 'expert',
+  },
+  // Playtime
+  {
+    id: 'playtime_5h', name: 'Veteran', description: 'Play for 5 hours total',
+    icon: '🎖', color: '#aaccff',
+    condition: (ctx) => ctx.totalPlayTime >= 18000,
+  },
+  {
+    id: 'playtime_10h', name: 'Legend', description: 'Play for 10 hours total',
+    icon: '🏅', color: '#ffd700',
+    condition: (ctx) => ctx.totalPlayTime >= 36000,
+  },
+  // Speed
+  {
+    id: 'fast_200', name: 'Speed Demon', description: 'Clear a 200+ BPM song',
+    icon: '⚡', color: '#ffcc00',
+    condition: (ctx) => (ctx as any).bpm >= 200 && ctx.accuracy >= 0.5,
+  },
+  // Endless
+  {
+    id: 'endless_20', name: 'Eternal', description: 'Survive 20 phases in Endless',
+    icon: '♾', color: '#ff00ff',
+    condition: (ctx) => ctx.endlessPhase >= 20,
+  },
+  // Perfects
+  {
+    id: 'perfects_5000', name: 'Perfect Storm', description: 'Hit 5,000 total Perfects',
+    icon: '⭐', color: '#ffd700',
+    condition: (ctx) => (ctx as any).totalPerfects >= 5000,
+  },
+  // Fun
+  {
+    id: 'midnight', name: 'Night Owl', description: 'Play between midnight and 4 AM',
+    icon: '🦉', color: '#6644ff',
+    condition: () => {
+      const h = new Date().getHours();
+      return h >= 0 && h < 4;
+    },
+  },
+  {
+    id: 'comeback', name: 'Comeback King', description: 'Win with less than 10% health remaining',
+    icon: '💪', color: '#ff4400',
+    condition: (ctx) => ctx.accuracy >= 0.5 && (ctx as any).healthPercent <= 0.1,
+  },
+  {
+    id: 'no_perfect', name: 'Barely Made It', description: 'Complete a song with 0 Perfects',
+    icon: '😅', color: '#ffcc00',
+    condition: (ctx) => (ctx as any).perfects === 0 && ctx.accuracy >= 0.5,
+  },
 ];
 
 export function loadAchievements(): Achievement[] {
