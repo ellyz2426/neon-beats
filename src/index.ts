@@ -210,6 +210,8 @@ import {
   createMultiplayerSession, recordPlayerResult, isSessionComplete,
   showMultiplayerResults, showPlayerSetup, type MultiplayerSession,
 } from './multiplayer';
+import { ComfortVignette, loadVRComfort, saveVRComfort } from './vrcomfort';
+import { LaneBurstSystem, AnimatedComboCounter, ScorePopupSystem } from './combofx';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -304,6 +306,10 @@ let zenParticles: ZenParticleField;
 let sfxPool: SFXPool;
 let multiplayerSession: MultiplayerSession | null = null;
 let noMissStreakTime = 0;  // tracks how long since last miss (seconds)
+let comfortVignette: ComfortVignette;
+let laneBursts: LaneBurstSystem;
+let animCombo: AnimatedComboCounter;
+let scorePopups: ScorePopupSystem;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -493,6 +499,13 @@ async function init() {
   zenParticles.hide();
   sfxPool = new SFXPool();
   sfxPool.init();
+
+  comfortVignette = new ComfortVignette();
+  laneBursts = new LaneBurstSystem();
+  world.scene.add(laneBursts.getGroup());
+  animCombo = new AnimatedComboCounter();
+  scorePopups = new ScorePopupSystem();
+
   createBossHUD();
   setupErrorBoundary();
 
@@ -988,6 +1001,20 @@ function handleLaneHit(lane: number) {
       onSurvivalBlockHit(survivalState);
     }
 
+    // Lane burst particles
+    const burstColor = LANE_COLORS[lane % LANE_COLORS.length];
+    laneBursts.burst(blockPos.x, blockPos.y, blockPos.z, burstColor, quality === 'perfect' ? 12 : 6);
+
+    // Animated combo counter
+    animCombo.setCombo(state.combo);
+
+    // Score popup
+    const scoreGain = state.score - origScore;
+    if (scoreGain > 0) {
+      const laneX = lane / state.numLanes;
+      scorePopups.show(scoreGain, laneX, quality);
+    }
+
     // Crowd reaction on combo milestones
     if (state.combo > 0 && state.combo % 25 === 0) {
       crowdSystem.cheer();
@@ -1202,6 +1229,7 @@ function handleMiss(block: ActiveBlock) {
 
   // Reset no-miss streak
   noMissStreakTime = 0;
+  animCombo.setCombo(0);
 
   // Crowd gasp on miss during high combo
   if (state.combo >= 15) {
@@ -1499,6 +1527,15 @@ function gameLoop() {
     zenParticles.update(dt, now / 1000, zenResult.breathIntensity, zenResult.color);
     updateZenHUD(zenState.timeAlive);
   }
+
+  // Lane burst particles
+  laneBursts.update(dt);
+
+  // Animated combo counter
+  animCombo.update(dt);
+
+  // Comfort vignette
+  comfortVignette.update(dt);
 
   if (settings.showFPS) fpsCounter.update();
 }
