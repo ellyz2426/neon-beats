@@ -24,15 +24,39 @@ export interface LeaderboardEntry {
 const LB_KEY_PREFIX = 'neonbeats_lb_';
 const MAX_ENTRIES = 10;
 
-export function loadLeaderboard(songId: string): LeaderboardEntry[] {
+export function loadLeaderboard(songId: string, difficulty?: string): LeaderboardEntry[] {
   try {
     const raw = localStorage.getItem(`${LB_KEY_PREFIX}${songId}`);
     if (raw) {
-      const entries: LeaderboardEntry[] = JSON.parse(raw);
+      let entries: LeaderboardEntry[] = JSON.parse(raw);
+      if (difficulty) {
+        entries = entries.filter(e => e.difficulty === difficulty);
+      }
       return entries.sort((a, b) => b.score - a.score).slice(0, MAX_ENTRIES);
     }
   } catch { /* ignore */ }
   return [];
+}
+
+export function getPersonalBest(songId: string, difficulty?: string): LeaderboardEntry | null {
+  const entries = loadLeaderboard(songId, difficulty);
+  return entries.length > 0 ? entries[0] : null;
+}
+
+export function getAllTimeBest(): LeaderboardEntry | null {
+  try {
+    let best: LeaderboardEntry | null = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(LB_KEY_PREFIX)) {
+        const entries: LeaderboardEntry[] = JSON.parse(localStorage.getItem(key) || '[]');
+        for (const e of entries) {
+          if (!best || e.score > best.score) best = e;
+        }
+      }
+    }
+    return best;
+  } catch { return null; }
 }
 
 export function saveToLeaderboard(songId: string, entry: LeaderboardEntry): number {

@@ -1353,9 +1353,7 @@ function gameLoop() {
     if (practiceConfig.enabled && practiceConfig.metronomeEnabled) {
       if (currentBeat !== lastMetronomeClick) {
         lastMetronomeClick = currentBeat;
-        const ctx = initAudio();
-        const isDownbeat = currentBeat % 4 === 0;
-        playMetronomeClick(ctx, ctx.destination, ctx.currentTime, isDownbeat);
+        playMetronomeClick();
       }
     }
   }

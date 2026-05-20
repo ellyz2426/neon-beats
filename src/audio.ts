@@ -10,28 +10,42 @@ let sfxGain: GainNode | null = null;
 
 export function initAudio(): AudioContext {
   if (audioCtx) return audioCtx;
-  audioCtx = new AudioContext();
+  try {
+    audioCtx = new AudioContext();
 
-  // Master compressor for glue and limiting
-  const compressor = audioCtx.createDynamicsCompressor();
-  compressor.threshold.value = -12;
-  compressor.knee.value = 6;
-  compressor.ratio.value = 4;
-  compressor.attack.value = 0.003;
-  compressor.release.value = 0.15;
+    // Master compressor for glue and limiting
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = -12;
+    compressor.knee.value = 6;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.15;
 
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.7;
-  masterGain.connect(compressor);
-  compressor.connect(audioCtx.destination);
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(compressor);
+    compressor.connect(audioCtx.destination);
 
-  musicGain = audioCtx.createGain();
-  musicGain.gain.value = 0.35;
-  musicGain.connect(masterGain);
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.35;
+    musicGain.connect(masterGain);
 
-  sfxGain = audioCtx.createGain();
-  sfxGain.gain.value = 0.6;
-  sfxGain.connect(masterGain);
+    sfxGain = audioCtx.createGain();
+    sfxGain.gain.value = 0.6;
+    sfxGain.connect(masterGain);
+  } catch (e) {
+    console.warn('Audio initialization failed:', e);
+    // Create a minimal context as fallback
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+      musicGain = audioCtx.createGain();
+      musicGain.connect(masterGain);
+      sfxGain = audioCtx.createGain();
+      sfxGain.connect(masterGain);
+    }
+  }
 
   return audioCtx;
 }
