@@ -187,6 +187,13 @@ import {
   ReactiveWalls, FloorGrid, SkyParticles,
   StageManager, MissScreenEffect, PerfectStreakGlow,
 } from './reactive';
+import {
+  createBossState, startBoss, updateBoss, onBossMiss,
+  generateBossSong, BOSSES,
+  createBossHUD, updateBossHUD, showBossHUD, hideBossHUD,
+  type BossState,
+} from './boss';
+import { FrameRateMonitor, getQualitySettings } from './pool';
 
 // ---- Globals ----
 const container = document.getElementById('scene-container') as HTMLDivElement;
@@ -271,6 +278,8 @@ let skyParticles: SkyParticles;
 let stageManager: StageManager;
 let missEffect: MissScreenEffect;
 let perfectStreakGlow: PerfectStreakGlow;
+let bossState: BossState;
+let frameMonitor: FrameRateMonitor;
 
 // Key mapping
 let laneKeys: string[] = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
@@ -449,6 +458,9 @@ async function init() {
   stageManager = new StageManager();
   missEffect = new MissScreenEffect();
   perfectStreakGlow = new PerfectStreakGlow();
+  bossState = createBossState();
+  frameMonitor = new FrameRateMonitor();
+  createBossHUD();
 
   setupInput();
 
@@ -1130,6 +1142,11 @@ function handleMiss(block: ActiveBlock) {
   }
   perfectStreakGlow.onNonPerfect();
 
+  // Boss heals on player miss
+  if (bossState.active) {
+    onBossMiss(bossState);
+  }
+
   // Crowd gasp on miss during high combo
   if (state.combo >= 15) {
     crowdSystem.gasp();
@@ -1385,6 +1402,32 @@ function gameLoop() {
       comboPopups.show(waveMsg, '#ffdd00', 55, 25);
     }
   }
+
+  // Boss battle
+  if (bossState.active) {
+    const bossEvent = updateBoss(bossState, dt, state.combo, state.misses);
+    if (bossEvent) {
+      const color = bossEvent.type === 'defeated' ? '#ffd700' : '#ff0066';
+      comboPopups.show(bossEvent.message, color, 60, 28);
+      if (bossEvent.type === 'defeated') {
+        // Boss defeated — big celebration
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            hitAnims.spawnPerfect(
+              (Math.random() - 0.5) * 2,
+              1 + Math.random(),
+              HIT_ZONE_Z + Math.random() * 2
+            );
+          }, i * 200);
+        }
+        hideBossHUD();
+      }
+    }
+    updateBossHUD(bossState);
+  }
+
+  // Dynamic quality monitoring
+  frameMonitor.addFrame(dt);
 
   if (settings.showFPS) fpsCounter.update();
 }

@@ -7,7 +7,7 @@
 import { playMenuSelect, setMasterVolume, setMusicVolume, setSfxVolume } from './audio';
 
 export type ColorblindMode = 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia';
-export type ThemeId = 'neon' | 'cyberpunk' | 'ocean' | 'space' | 'sakura';
+export type ThemeId = 'neon' | 'cyberpunk' | 'ocean' | 'space' | 'sakura' | 'inferno' | 'arctic' | 'synthwave' | 'void' | 'forest';
 
 export interface Settings {
   // Audio
